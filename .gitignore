@@ -22,6 +22,7 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# Generated browser reports and traces
+# Generated browser screenshots, reports and traces
+/artifacts/screenshots/
 /artifacts/test-results/
 /artifacts/playwright-report/
