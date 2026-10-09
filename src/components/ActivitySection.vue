@@ -1,9 +1,8 @@
 <template>
   <details class="panel workflow-section" :open="!player.bets.length">
     <summary class="section-heading">
-      <span class="section-number">02</span>
       <div>
-        <h2>Activity history</h2>
+        <h2>Activity batches</h2>
         <p v-if="player.generationBatches.length">
           {{ player.generationBatches.length }} batches ·
           {{ player.bets.length.toLocaleString() }} synthetic rounds
@@ -215,7 +214,7 @@
         </tbody>
       </table>
     </div>
-    <form v-if="edit" class="round-edit" @submit.prevent="saveEdit">
+    <form v-if="edit" ref="roundEditForm" class="round-edit" @submit.prevent="saveEdit">
       <h3>Edit round</h3>
       <div class="form-grid">
         <label
@@ -258,7 +257,7 @@
 </template>
 <script setup>
 /* eslint-env vue/setup-compiler-macros */
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch, nextTick } from 'vue'
 import { usePlayground } from '../stores/playground.js'
 import { games, gameById } from '../domain/games/mockGames.js'
 import { generateActivity } from '../domain/simulation/activityGenerator.js'
@@ -269,7 +268,8 @@ const store = usePlayground(),
   preview = ref(null),
   batch = ref(null),
   edit = ref(null),
-  editError = ref('')
+  editError = ref(''),
+  roundEditForm = ref(null)
 const form = reactive({
   gameId: 'g01',
   dateTime: store.settings.asOf.slice(0, 10) + 'T12:00',
@@ -346,6 +346,15 @@ const batchBets = computed(() =>
   batch.value ? props.player.bets.filter((b) => batch.value.betIds.includes(b.id)) : [],
 )
 const winFor = (id) => props.player.wins.find((w) => w.betId === id)
+async function inspectRound(b) {
+  const owner = props.player.generationBatches.find((candidate) => candidate.betIds.includes(b.id))
+  if (!owner) return
+  batch.value = owner
+  startEdit(b)
+  await nextTick()
+  roundEditForm.value?.querySelector('input')?.focus()
+}
+defineExpose({ inspectRound })
 function startEdit(b) {
   editError.value = ''
   edit.value = {

@@ -8,7 +8,7 @@
       :inert="compact && !menu ? '' : null"
       :aria-hidden="compact && !menu ? 'true' : undefined"
     >
-      <RouterLink to="/simulations" class="brand" @click="menu = false"
+      <RouterLink to="/players" class="brand" @click="menu = false"
         ><div class="brand-mark"><span></span><span></span><span></span></div>
         <div>playlive<span class="brand-sub">RECOMMENDATION LAB</span></div></RouterLink
       >
@@ -31,8 +31,11 @@
         </select>
       </div>
       <nav aria-label="Main navigation">
-        <RouterLink to="/simulations" @click="menu = false"
-          ><span class="nav-icon">▥</span> Simulations <span class="nav-arrow">↗</span></RouterLink
+        <RouterLink
+          to="/players"
+          :class="{ 'router-link-active': route.name === 'player' }"
+          @click="menu = false"
+          ><span class="nav-icon">▥</span> Players <span class="nav-arrow">↗</span></RouterLink
         ><RouterLink to="/games" @click="menu = false"
           ><span class="nav-icon">▦</span> Game catalogue
           <span class="nav-count">{{ games.length }}</span></RouterLink
@@ -57,8 +60,15 @@
             aria-label="Open navigation"
             @click="menu = !menu"
           >
-            ☰</button
-          ><strong>{{ route.path === '/games' ? 'Game catalogue' : 'Simulations' }}</strong>
+            ☰
+          </button>
+          <template v-if="route.name === 'player'"
+            ><RouterLink to="/players">Players</RouterLink><span aria-hidden="true">/</span
+            ><strong>{{
+              store.players.find((p) => p.id === route.params.playerId)?.name || 'Player'
+            }}</strong></template
+          >
+          <strong v-else>{{ route.path === '/games' ? 'Game catalogue' : 'Players' }}</strong>
         </div>
         <div class="topbar-actions">
           <button class="text-button" @click="importInput.click()">↥ <span>Import</span></button
@@ -93,13 +103,14 @@
 </template>
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { usePlayground } from './stores/playground.js'
 import { engines } from './domain/engines/registry.js'
 import { games } from './domain/games/mockGames.js'
 import { STORAGE_KEY } from './stores/persistence.js'
 const store = usePlayground(),
   route = useRoute(),
+  router = useRouter(),
   menu = ref(false),
   importInput = ref(null),
   importError = ref('')
@@ -185,6 +196,7 @@ async function importState(e) {
     const raw = await file.text()
     if (window.confirm('Replace this local workspace with the imported data?')) {
       store.importJSON(raw)
+      router.push('/players')
       importError.value = ''
     }
   } catch (error) {
@@ -198,7 +210,9 @@ function confirmReset() {
     window.confirm(
       'Reset all playground data? All local players, activity, results, and presets will be removed.',
     )
-  )
+  ) {
     store.resetAll()
+    if (route.name === 'player') router.push('/players')
+  }
 }
 </script>

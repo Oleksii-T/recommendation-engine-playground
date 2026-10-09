@@ -4,24 +4,29 @@ Validated on 9 October 2026 against the user's existing development server at `h
 
 ## Checks
 
-Final results: **27 unit tests passed, 11 Playwright tests passed, lint passed, and the production build passed without warnings.** All nine screenshots were refreshed after the final implementation. Playwright reused the Chromium executable already installed on this device through `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+Final results: **27 unit tests passed, 12 Playwright tests passed, lint passed, and the production build passed without warnings.** All fourteen screenshots were refreshed after the final implementation. Playwright reused the Chromium executable already installed on this device through `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 
 - Native Node unit tests cover deterministic generation, amount bounds, all outcome buckets, distribution frequencies, input limits, UTC daily aggregation, rollback and duplicate handling, recency, engagement caps, favourite deduplication, attribute normalization, metadata weight renormalization, V1 independence from history, V2 composition and fallback, outcome neutrality, platform/status eligibility, provider diversity, cold/bonus-only states, input fingerprints, trace consistency, configuration validation, deterministic demos, and JSON import validation.
-- Playwright exercises player CRUD and deletion cancellation; preview/confirmation; round correction, rollback, and batch deletion; V2 groups and explanation traces; profile disclosure; paired runs with identical fingerprints; formula validation and presets; export/reset/import/reload; invalid imports; every catalogue filter and sorting; all scenarios; operation while offline; mobile/tablet navigation and horizontal overflow; drawer focus and Escape; corrupted storage and quota failure.
+- Playwright exercises the Players table and its four columns; a name-only creation modal and redirect; player CRUD and deletion cancellation; direct player URLs and unknown-player handling; keyboard-accessible primary tabs; paginated activity and player isolation; one subtab per immutable simulation result, run selection after reload, and engine changes while viewing saved results; preview/confirmation; round correction, rollback, and batch deletion; V2 groups and explanation traces; profile disclosure; paired runs with identical fingerprints; formula validation and presets; export/reset/import/reload; invalid imports; every catalogue filter and sorting; all scenarios; operation while offline; mobile/tablet navigation and horizontal overflow; drawer focus and Escape; corrupted storage and quota failure.
 - Production compilation and ESLint are checked independently.
 
 ## Screenshot review
 
 | Screenshot | What was reviewed |
 | --- | --- |
-| [Empty workspace](../artifacts/screenshots/01-empty-workspace.png) | Persistent shell, disabled run, player and result empty states |
+| [Empty workspace](../artifacts/screenshots/01-empty-workspace.png) | Players table, Add Player action, persistent navigation, and empty state |
 | [Batch preview](../artifacts/screenshots/02-batch-preview.png) | Required generator controls, range and totals, timestamp bounds, sample rows |
 | [Personalized results](../artifacts/screenshots/03-personalized-results.png) | Taste profile, 2+6+2 composition, scores and reasons |
 | [Recommendation explanation](../artifacts/screenshots/04-recommendation-explanation.png) | Drawer, true weighted contributions, plain-language explanation |
 | [Engine comparison](../artifacts/screenshots/05-engine-comparison.png) | Overlap, rank changes, provider/category counts, popularity and content-match metrics |
 | [Catalogue](../artifacts/screenshots/06-game-catalogue.png) | Filters, game identity, status and deliberate horizontal table scrolling |
-| [Mobile simulation](../artifacts/screenshots/07-mobile-simulations.png) | 390px layout, stacked controls and result groups |
+| [Mobile simulation](../artifacts/screenshots/07-mobile-simulations.png) | 390px player tabs, saved-run subtabs, and contained scrolling |
 | [Mobile catalogue](../artifacts/screenshots/08-mobile-catalogue.png) | Small-screen filters and contained table scrolling |
 | [Tablet simulation](../artifacts/screenshots/09-tablet-simulations.png) | 820px layout and collapsed navigation |
+| [Creation modal](../artifacts/screenshots/10-player-creation-modal.png) | One name field, focus management, Cancel and Add Player actions |
+| [Players table](../artifacts/screenshots/11-players-table.png) | Names, bet/win totals and record counts, last simulation timestamps |
+| [General info](../artifacts/screenshots/12-player-general.png) | Player metadata, summary, favourites, and management actions |
+| [Bets and Wins](../artifacts/screenshots/13-bets-wins.png) | Paired outcomes, round editing, and pagination |
+| [Simulation run subtabs](../artifacts/screenshots/14-simulation-runs.png) | Multiple immutable runs, selected run and New simulation action |
 
 Screenshots are generated by the browser suite and are review artifacts, not pixel-diff baselines. Validation demonstrates local simulation behaviour, not recommendation effectiveness in production.

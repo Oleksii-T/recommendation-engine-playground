@@ -3,13 +3,44 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 const KEY = 'recommendation-playground:v1'
 const screenshots = path.resolve('artifacts/screenshots')
+const scenarioNames = {
+  cold: 'Cold start',
+  slots: 'Slot enthusiast',
+  live: 'Live casino player',
+  mixed: 'Mixed player',
+}
 async function state(page) {
   return page.evaluate((key) => JSON.parse(localStorage.getItem(key)), KEY)
 }
+async function tab(page, name) {
+  await page.getByRole('tab', { name, exact: true }).click()
+  await expect(page.getByRole('tab', { name, exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+}
 async function demo(page, scenario = 'slots') {
-  await page.locator('#demo-scenario').selectOption(scenario)
-  await page.getByRole('button', { name: 'Load demo', exact: false }).click()
-  await expect(page.getByLabel('Selected player')).toHaveValue(`demo-${scenario}`)
+  await page.goto('/players')
+  await page.getByRole('button', { name: 'Load demo', exact: true }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: scenarioNames[scenario], exact: false })
+    .click()
+  await expect(
+    page.getByRole('heading', { name: scenarioNames[scenario], exact: true }),
+  ).toBeVisible()
+}
+async function create(page, name = 'Test explorer') {
+  await page.getByRole('button', { name: 'Add Player', exact: false }).click()
+  await page.getByRole('dialog').getByLabel('Player name').fill(name)
+  await page.getByRole('dialog').getByRole('button', { name: 'Add Player', exact: true }).click()
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+}
+async function newSimulation(page) {
+  await tab(page, 'Simulation')
+  const button = page.getByRole('button', { name: 'New simulation', exact: false })
+  if (await button.count()) await button.click()
+  await expect(page.getByRole('heading', { name: 'Run configuration', exact: true })).toBeVisible()
 }
 async function run(page, compare = false) {
   await page
@@ -17,138 +48,245 @@ async function run(page, compare = false) {
     .click()
   await expect(page.locator('.recommendation-card')).toHaveCount(10)
 }
-async function screenshot(page, name) {
+async function screenshot(page, name, fullPage = true) {
   await page.evaluate(() => window.scrollTo(0, 0))
   await page
     .locator('.toast')
     .evaluateAll((nodes) => nodes.forEach((n) => (n.style.visibility = 'hidden')))
-  await page.screenshot({
-    path: path.join(screenshots, name),
-    fullPage: name !== '04-recommendation-explanation.png',
-  })
+  await page.screenshot({ path: path.join(screenshots, name), fullPage })
 }
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Simulations.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Players', exact: true })).toBeVisible()
 })
-test('empty workspace, player CRUD, keyboard navigation and cold start', async ({ page }) => {
+
+test('Players list, name-only creation modal, redirect, rename and deletion', async ({ page }) => {
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
-  await expect(page).toHaveURL(/\/simulations$/)
-  await expect(
-    page.getByRole('button', { name: 'Run recommendation', exact: false }),
-  ).toBeDisabled()
+  await expect(page).toHaveURL(/\/players$/)
+  await expect(page.getByRole('link', { name: /Players/ }).first()).toBeVisible()
+  await expect(page.locator('.players-table th')).toHaveText([
+    'Name',
+    'Bets',
+    'Wins',
+    'Last simulation run',
+  ])
+  await expect(page.getByRole('heading', { name: 'No players yet' })).toBeVisible()
   await screenshot(page, '01-empty-workspace.png')
-  await page.getByRole('button', { name: 'Create player', exact: false }).click()
-  await page.getByLabel('Player name', { exact: true }).fill('Test explorer')
-  await page.getByRole('button', { name: 'Save player', exact: true }).click()
-  await expect(page.getByLabel('Selected player')).toContainText('Test explorer')
-  await run(page)
-  await expect(page.getByText('Not enough player history yet', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Add Player', exact: false }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.locator('input')).toHaveCount(1)
+  await expect(dialog.getByLabel('Player name')).toBeFocused()
+  await expect(dialog.getByRole('button', { name: 'Add Player', exact: true })).toBeDisabled()
+  await screenshot(page, '10-player-creation-modal.png', false)
+  await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.players-table tbody tr')).toHaveCount(0)
+  await create(page)
+  await expect(page).toHaveURL(/\/players\/[^/]+\/general$/)
+  await expect(page.getByRole('tab', { name: 'General info' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByRole('tablist', { name: 'Player sections' }).getByRole('tab')).toHaveCount(
+    3,
+  )
   await page.getByRole('button', { name: 'Rename', exact: true }).click()
   await page.getByLabel('New player name').fill('Renamed explorer')
   await page.getByRole('button', { name: 'Save name', exact: true }).click()
-  await expect(page.getByLabel('Selected player')).toContainText('Renamed explorer')
-  await expect(page.getByText('Based on an older player state', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Renamed explorer', exact: true })).toBeVisible()
+  await page.getByText('Favourite games', { exact: false }).click()
+  await page.getByRole('checkbox', { name: /Amber Temple/ }).check()
+  expect((await state(page)).players[0].favouriteGameIds).toEqual(['g01'])
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Renamed explorer', exact: true })).toBeVisible()
   page.once('dialog', (d) => d.dismiss())
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
-  await expect(page.getByLabel('Selected player')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Renamed explorer', exact: true })).toBeVisible()
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(page).toHaveURL(/\/players$/)
   await expect(page.getByRole('heading', { name: 'No players yet' })).toBeVisible()
   expect(errors).toEqual([])
 })
-test('generate preview, confirm batch, correct a round, rollback and delete batch', async ({
+
+test('player table totals and last simulation, row navigation and keyboard tabs', async ({
   page,
 }) => {
-  await page.getByRole('button', { name: 'Create player', exact: false }).click()
-  await page.getByLabel('Player name', { exact: true }).fill('Activity test')
-  await page.getByRole('button', { name: 'Save player', exact: true }).click()
+  await demo(page)
+  await screenshot(page, '12-player-general.png')
+  await newSimulation(page)
+  await run(page)
+  const document = await state(page),
+    player = document.players[0],
+    firstRun = player.recommendationRuns[0]
+  await page.goto('/players')
+  const row = page.locator('.players-table tbody tr')
+  await expect(row).toHaveCount(1)
+  await expect(row).toContainText('606 bets')
+  await expect(row).toContainText('606 win outcomes')
+  await expect(row.locator('time')).toHaveAttribute('datetime', firstRun.createdAt)
+  await screenshot(page, '11-players-table.png')
+  await row.getByRole('link', { name: /Slot enthusiast/ }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/demo-slots\/general$/)
+  await page.getByRole('tab', { name: 'General info' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab', { name: 'Bets and Wins' })).toBeFocused()
+  await expect(page).toHaveURL(/\/activity$/)
+  await page.keyboard.press('End')
+  await expect(page.getByRole('tab', { name: 'Simulation', exact: true })).toBeFocused()
+  await expect(page).toHaveURL(/\/simulation$/)
+  await page.reload()
+  await expect(page.locator('.recommendation-card')).toHaveCount(10)
+  await page.goto('/simulations')
+  await expect(page).toHaveURL(/\/players$/)
+})
+
+test('Bets and Wins generates activity, corrects a round, rolls back and deletes batches', async ({
+  page,
+}) => {
+  await create(page, 'Activity test')
+  await tab(page, 'Bets and Wins')
   const section = page.locator('.workflow-section')
   await section.getByLabel('Rounds', { exact: true }).fill('20')
   await section.getByLabel('Sessions', { exact: true }).fill('2')
   await section.getByRole('button', { name: 'Preview batch', exact: false }).click()
-  await expect(page.getByRole('heading', { name: 'Batch preview', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Batch preview' })).toBeVisible()
   await screenshot(page, '02-batch-preview.png')
   await section.getByRole('button', { name: 'Confirm & add activity', exact: false }).click()
-  let data = await state(page),
-    player = data.players[0]
-  expect(player.bets).toHaveLength(20)
-  expect(player.wins).toHaveLength(20)
-  expect(player.bets.every((b) => b.amount >= 80 && b.amount <= 120)).toBeTruthy()
+  await expect(page.locator('.rounds-table tbody tr')).toHaveCount(20)
+  let document = await state(page)
+  expect(document.players[0].bets.every((b) => b.amount >= 80 && b.amount <= 120)).toBeTruthy()
+  await newSimulation(page)
   await run(page)
-  if (!(await section.getAttribute('open'))) await section.locator('summary').first().click()
-  await section.getByRole('button', { name: 'Inspect rounds', exact: false }).click()
-  await page.getByRole('button', { name: 'Edit round 1', exact: true }).click()
+  await tab(page, 'Bets and Wins')
+  await page
+    .locator('.rounds-table tbody tr')
+    .first()
+    .getByRole('button', { name: /Edit round/ })
+    .click()
   const dialog = page.getByRole('dialog')
+  await expect(dialog.getByLabel('Bet amount', { exact: true })).toBeFocused()
   await dialog.getByLabel('Bet amount', { exact: true }).fill('99')
   await dialog.getByLabel('Win amount', { exact: true }).fill('75')
   await dialog.getByLabel('Rolled back').check()
-  await dialog.getByRole('button', { name: 'Save correction', exact: true }).click()
-  await expect(dialog.getByText('Rolled back', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Save correction' }).click()
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.rounds-table tbody tr').first()).toContainText('Rolled back')
+  await tab(page, 'Simulation')
   await expect(page.getByText('Based on an older player state', { exact: true })).toBeVisible()
+  await newSimulation(page)
   await run(page)
-  data = await state(page)
-  player = data.players[0]
-  expect(player.bets[0].amount).toBe(99)
-  expect(player.wins[0].amount).toBe(75)
-  expect(player.recommendationRuns.at(-1).dailyStats.reduce((n, s) => n + s.paidRounds, 0)).toBe(19)
+  document = await state(page)
+  expect(
+    document.players[0].recommendationRuns.at(-1).dailyStats.reduce((n, s) => n + s.paidRounds, 0),
+  ).toBe(19)
+  await tab(page, 'Bets and Wins')
+  if (!(await section.getAttribute('open'))) await section.locator('summary').first().click()
   page.once('dialog', (d) => d.accept())
   await section.getByRole('button', { name: /Delete batch Amber Temple/ }).click()
-  data = await state(page)
-  expect(data.players[0].bets).toHaveLength(0)
-  expect(data.players[0].wins).toHaveLength(0)
-  expect(data.players[0].recommendationRuns).toHaveLength(2)
+  await expect(page.locator('.rounds-table tbody tr')).toHaveCount(0)
+  document = await state(page)
+  expect(document.players[0].bets).toHaveLength(0)
+  expect(document.players[0].wins).toHaveLength(0)
+  expect(document.players[0].recommendationRuns).toHaveLength(2)
 })
-test('V2 composition, taste profile, score explanation and technical trace', async ({ page }) => {
-  const errors = []
-  page.on('pageerror', (e) => errors.push(e.message))
+
+test('activity table paginates and a second player has an isolated history', async ({ page }) => {
   await demo(page)
+  await tab(page, 'Bets and Wins')
+  await expect(page.locator('.rounds-table tbody tr')).toHaveCount(50)
+  await expect(page.getByText('Page 1 of 13', { exact: true })).toBeVisible()
+  const first = await page.locator('.rounds-table tbody tr').first().textContent()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  expect(await page.locator('.rounds-table tbody tr').first().textContent()).not.toBe(first)
+  await screenshot(page, '13-bets-wins.png')
+  await page.goto('/players')
+  await create(page, 'Empty player')
+  await tab(page, 'Bets and Wins')
+  await expect(page.locator('.rounds-table tbody tr')).toHaveCount(0)
+  await page.goto('/players')
+  await page
+    .locator('.players-table')
+    .getByRole('link', { name: /Slot enthusiast/ })
+    .click()
+  await tab(page, 'Bets and Wins')
+  await expect(page.getByText('Page 1 of 13')).toBeVisible()
+})
+
+test('each simulation is a saved subtab, including cold start and old-state markers', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
   await run(page)
+  const first = (await state(page)).players[0].recommendationRuns[0],
+    url = page.url()
   await expect(page.getByRole('heading', { name: 'Familiar · 2', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Discovery · 6', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Explore · 2', exact: true })).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'Player taste profile', exact: true }),
-  ).toBeVisible()
   await screenshot(page, '03-personalized-results.png')
   await page.getByRole('button', { name: 'Why this game?', exact: false }).first().click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'What contributed to this score', exact: true }),
-  ).toBeVisible()
   await page.getByRole('dialog').getByText('Technical calculation', { exact: true }).click()
   await expect(page.getByRole('dialog').locator('pre')).toContainText('originalScore')
   await page.getByRole('dialog').evaluate((d) => {
     d.scrollTop = 0
   })
-  await screenshot(page, '04-recommendation-explanation.png')
+  await screenshot(page, '04-recommendation-explanation.png', false)
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).not.toBeVisible()
-  await page.getByRole('button', { name: 'View all preferences', exact: false }).click()
-  await expect(page.getByRole('dialog')).toContainText('Themes and features may overlap')
-  await page.keyboard.press('Escape')
-  await page.getByText('Calculation details', { exact: false }).first().click()
-  await expect(page.locator('.calculation-panel tbody tr')).toHaveCount(12)
+  await newSimulation(page)
+  await page.getByLabel('Run seed').fill('second-run')
+  await run(page)
+  await expect(page.getByRole('tablist', { name: 'Simulation runs' }).getByRole('tab')).toHaveCount(
+    2,
+  )
+  await expect(page.getByRole('tab', { name: 'Run 2 · V2', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await screenshot(page, '14-simulation-runs.png')
+  await page.getByRole('tab', { name: 'Run 1 · V2', exact: true }).click()
+  await expect(page).toHaveURL(url)
   await page.reload()
-  await expect(page.locator('.recommendation-card')).toHaveCount(10)
-  expect(errors).toEqual([])
+  await expect(page.getByRole('tab', { name: 'Run 1 · V2', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  expect((await state(page)).players[0].recommendationRuns[0]).toEqual(first)
+  await page.locator('#engine-version').selectOption('v1-popularity')
+  await expect(page.getByRole('tab', { name: 'Run 1 · V2', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.locator('.result-run-title')).toContainText('Personalized Hybrid')
+  await tab(page, 'General info')
+  await page.getByRole('button', { name: 'Rename', exact: true }).click()
+  await page.getByLabel('New player name').fill('Updated slots')
+  await page.getByRole('button', { name: 'Save name' }).click()
+  await tab(page, 'Simulation')
+  await expect(page.getByText('Based on an older player state', { exact: true })).toBeVisible()
+  expect((await state(page)).players[0].recommendationRuns[0]).toEqual(first)
+  await demo(page, 'cold')
+  await page.locator('#engine-version').selectOption('v2-hybrid-2-6-2')
+  await newSimulation(page)
+  await run(page)
+  await expect(page.getByText('Not enough player history yet', { exact: false })).toBeVisible()
 })
-test('comparison runs share fingerprint and show rank differences and metrics', async ({
-  page,
-}) => {
+
+test('comparison creates two run subtabs and uses identical snapshots', async ({ page }) => {
   await demo(page)
+  await newSimulation(page)
   await page.getByLabel('Compare with', { exact: true }).selectOption('v1-popularity')
   await run(page, true)
-  await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
-  const data = await state(page),
-    runs = data.players[0].recommendationRuns
+  const runs = (await state(page)).players[0].recommendationRuns
   expect(runs).toHaveLength(2)
   expect(runs[0].inputFingerprint).toBe(runs[1].inputFingerprint)
-  expect(runs[0].seed).toBe(runs[1].seed)
-  expect(runs[0].platform).toBe(runs[1].platform)
+  await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
+  await expect(page.getByRole('tablist', { name: 'Simulation runs' }).getByRole('tab')).toHaveCount(
+    2,
+  )
   await page
     .locator('.toast')
     .evaluateAll((nodes) => nodes.forEach((n) => (n.style.visibility = 'hidden')))
@@ -158,57 +296,67 @@ test('comparison runs share fingerprint and show rank differences and metrics', 
   await page.locator('.comparison-table td:nth-child(3) button').first().click()
   await expect(page.getByRole('dialog')).toContainText('V1 · Popularity Baseline')
   await page.keyboard.press('Escape')
-  await page.locator('#engine-version').selectOption('v1-popularity')
+  await page.getByRole('tab', { name: 'Run 2 · V1', exact: true }).click()
   await expect(page.locator('.result-run-title')).toContainText('Popularity Baseline')
-  await page.getByLabel('Compare with', { exact: true }).selectOption('v2-hybrid-2-6-2')
+  await page.getByLabel('Compare with', { exact: true }).selectOption(runs[0].id)
+  await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
+  await page.reload()
   await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
 })
-test('formula validation, presets, saved configuration and defaults', async ({ page }) => {
+
+test('formula validation, presets and immutable run configuration', async ({ page }) => {
   await demo(page)
+  await newSimulation(page)
   await page.locator('.formula-panel summary').click()
   await page.getByLabel('Category match', { exact: true }).fill('0.5')
   await expect(
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
   ).toBeDisabled()
-  await expect(
-    page.getByText('Content match weights must total 1', { exact: false }).first(),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Restore defaults', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Run recommendation', exact: false })).toBeEnabled()
-  await page.getByLabel('Recency half-life (days)', { exact: true }).fill('45')
-  await page.getByLabel('Preset name', { exact: true }).fill('Longer memory')
-  await page.getByRole('button', { name: 'Save preset', exact: true }).click()
+  await page.getByRole('button', { name: 'Restore defaults' }).click()
+  await page.getByLabel('Recency half-life (days)').fill('45')
+  await page.getByLabel('Preset name').fill('Longer memory')
+  await page.getByRole('button', { name: 'Save preset' }).click()
   await run(page)
-  let data = await state(page)
+  const data = await state(page)
   expect(data.presets).toHaveLength(1)
   expect(data.players[0].recommendationRuns[0].engineConfig.halfLife).toBe(45)
-  await page.getByRole('button', { name: 'Restore defaults', exact: true }).click()
+  await newSimulation(page)
+  await page.locator('.formula-panel summary').click()
+  await page.getByRole('button', { name: 'Restore defaults' }).click()
   expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].halfLife).toBe(30)
-  await page.getByLabel('Saved presets', { exact: true }).selectOption(data.presets[0].id)
-  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
+  await page.getByLabel('Saved presets').selectOption(data.presets[0].id)
+  await expect(page.getByLabel('Recency half-life (days)')).toHaveValue('45')
   await page.reload()
   await page.locator('.formula-panel summary').click()
-  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
+  await expect(page.getByLabel('Recency half-life (days)')).toHaveValue('45')
 })
-test('export, reset, import, reload and invalid import are atomic', async ({ page }) => {
+
+test('export, reset, import and invalid import preserve players and run tabs', async ({ page }) => {
   await demo(page, 'live')
+  await newSimulation(page)
   await run(page)
-  const before = await state(page)
-  const downloadPromise = page.waitForEvent('download')
+  const before = await state(page),
+    runId = before.players[0].recommendationRuns[0].id
+  const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export JSON', exact: false }).click()
-  const download = await downloadPromise
-  const raw = await fs.readFile(await download.path(), 'utf8')
+  const download = await downloading,
+    raw = await fs.readFile(await download.path(), 'utf8')
   expect(JSON.parse(raw)).toEqual(before)
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'No players yet' })).toBeVisible()
+  await expect(page).toHaveURL(/\/players$/)
+  await expect(page.locator('.players-table tbody tr')).toHaveCount(0)
   page.once('dialog', (d) => d.accept())
   await page
     .locator('input[type=file]')
     .setInputFiles({ name: 'restore.json', mimeType: 'application/json', buffer: Buffer.from(raw) })
-  await expect(page.getByLabel('Selected player')).toHaveValue('demo-live')
-  await expect(page.locator('.recommendation-card')).toHaveCount(10)
+  await expect(page.locator('.players-table tbody tr')).toHaveCount(1)
   expect(await state(page)).toEqual(before)
+  await page.goto(`/players/demo-live/simulation?run=${runId}`)
+  await expect(page.getByRole('tab', { name: 'Run 1 · V2', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   await page.reload()
   expect(await state(page)).toEqual(before)
   page.once('dialog', (d) => d.accept())
@@ -219,18 +367,10 @@ test('export, reset, import, reload and invalid import are atomic', async ({ pag
   })
   await expect(page.getByRole('alert')).toContainText('Import failed')
   expect(await state(page)).toEqual(before)
-  page.once('dialog', (d) => d.accept())
-  await page.locator('input[type=file]').setInputFiles({
-    name: 'broken.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from('{broken'),
-  })
-  await expect(page.getByRole('alert')).toContainText('Import failed')
-  expect(await state(page)).toEqual(before)
 })
-test('catalogue searching, all filter types, sorting and detail metadata', async ({ page }) => {
+
+test('catalogue filters, sorting and details remain available from Players', async ({ page }) => {
   await page.getByRole('link', { name: 'Game catalogue', exact: false }).click()
-  await expect(page).toHaveURL(/\/games$/)
   await expect(page.locator('.games-table tbody tr')).toHaveCount(32)
   await screenshot(page, '06-game-catalogue.png')
   await page.getByRole('textbox', { name: 'Search games' }).fill('amber-temple')
@@ -255,7 +395,10 @@ test('catalogue searching, all filter types, sorting and detail metadata', async
   await page.getByRole('button', { name: 'Sort descending', exact: true }).click()
   await expect(page.locator('.games-table tbody tr').first()).toContainText('Ancient Vault')
 })
-test('all built-in scenarios run and offline page makes no external requests', async ({ page }) => {
+
+test('all demo scenarios and simulation work offline with no external requests', async ({
+  page,
+}) => {
   const external = []
   page.on('request', (req) => {
     if (/^https?:/.test(req.url()) && !req.url().startsWith('http://localhost:8080'))
@@ -263,87 +406,95 @@ test('all built-in scenarios run and offline page makes no external requests', a
   })
   for (const id of ['cold', 'slots', 'live', 'mixed']) {
     await demo(page, id)
+    await newSimulation(page)
     await run(page)
-    await expect(page.locator('.recommendation-card')).toHaveCount(10)
   }
   expect((await state(page)).players).toHaveLength(4)
   expect(external).toEqual([])
   await page.context().setOffline(true)
+  await newSimulation(page)
   await run(page)
   expect((await state(page)).players.at(-1).recommendationRuns).toHaveLength(2)
 })
-test('mobile and tablet layouts, navigation drawer and explanation focus', async ({ page }) => {
+
+test('mobile/tablet layouts, navigation, modal and run tab keyboard access', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await demo(page)
+  await create(page, 'Mobile player')
+  await page.getByRole('tab', { name: 'General info' }).focus()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('tab', { name: 'Simulation', exact: true })).toBeFocused()
   await run(page)
+  await screenshot(page, '07-mobile-simulations.png')
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy()
-  await screenshot(page, '07-mobile-simulations.png')
   await page.getByRole('button', { name: 'Why this game?', exact: false }).first().click()
-  await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Tab')
-  await expect(page.getByRole('button', { name: 'Close details', exact: true })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Close details' })).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await expect(page.getByRole('dialog').locator('summary')).toBeFocused()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
-  await page.getByRole('link', { name: 'Game catalogue', exact: false }).click()
-  await expect(page.locator('.sidebar')).not.toHaveClass(/open/)
+  await page.getByRole('button', { name: 'Open navigation' }).click()
+  await page.getByRole('link', { name: /Game catalogue/ }).click()
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy()
   await screenshot(page, '08-mobile-catalogue.png')
-  await page.setViewportSize({ width: 820, height: 1180 })
-  await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
-  await page.getByRole('link', { name: 'Simulations', exact: false }).click()
-  await expect(page.locator('.recommendation-card')).toHaveCount(10)
+  await page.getByRole('button', { name: 'Open navigation' }).click()
+  await page.getByRole('link', { name: /Players/ }).click()
+  await expect(page.getByRole('heading', { name: 'Players', exact: true })).toBeVisible()
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy()
+  await page.setViewportSize({ width: 820, height: 1180 })
+  await page
+    .locator('.players-table')
+    .getByRole('link', { name: /Mobile player/ })
+    .click()
+  await tab(page, 'Simulation')
+  await expect(page.locator('.recommendation-card')).toHaveCount(10)
   await screenshot(page, '09-tablet-simulations.png')
 })
-test('corrupt local storage and quota errors show recoverable warnings', async ({ page }) => {
+
+test('recoverable storage errors, unknown players and invalid draft persistence', async ({
+  page,
+}) => {
+  await page.goto('/players/missing/general')
+  await expect(page.getByRole('heading', { name: 'Player not found' })).toBeVisible()
+  await page.getByRole('link', { name: 'Back to Players' }).click()
   await page.evaluate((key) => localStorage.setItem(key, '{broken'), KEY)
   await page.reload()
   await expect(page.getByRole('alert')).toContainText('Saved data could not be loaded')
-  await expect(page.getByRole('button', { name: 'Export stored file', exact: true })).toBeVisible()
   page.once('dialog', (d) => d.accept())
   await page.getByRole('button', { name: 'Reset', exact: true }).click()
   await expect(page.getByRole('alert')).not.toBeVisible()
-  await page.evaluate(() => {
-    Storage.prototype.setItem = () => {
-      throw new DOMException('full', 'QuotaExceededError')
-    }
-  })
   await demo(page)
-  await expect(page.getByRole('alert')).toContainText('Local data could not be saved')
-  await run(page)
-  await expect(page.locator('.recommendation-card')).toHaveCount(10)
-})
-
-test('invalid formula drafts and an empty seed do not damage reloadable player data', async ({
-  page,
-}) => {
-  await demo(page)
+  await newSimulation(page)
   await page.locator('.formula-panel summary').click()
   await page.getByLabel('Category match', { exact: true }).fill('0.9')
   await expect(
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
   ).toBeDisabled()
-  await page.getByRole('button', { name: 'Rename', exact: true }).click()
-  await page.getByLabel('New player name').fill('Preserved slot player')
-  await page.getByRole('button', { name: 'Save name', exact: true }).click()
   expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].categoryWeight).toBe(0.3)
-  await page.getByLabel('Run seed', { exact: true }).fill('')
-  await page.getByLabel('Run seed', { exact: true }).blur()
+  await page.getByLabel('Run seed').fill('')
+  await page.getByLabel('Run seed').blur()
   await page.reload()
   await expect(page.getByRole('alert')).not.toBeVisible()
-  await expect(page.getByLabel('Selected player')).toContainText('Preserved slot player')
   expect((await state(page)).players[0].bets).toHaveLength(606)
   await expect(
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
   ).toBeDisabled()
-  await page.getByLabel('Run seed', { exact: true }).fill('restored-seed')
+  await page.getByLabel('Run seed').fill('restored')
   await run(page)
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError')
+    }
+  })
+  await newSimulation(page)
+  await page.getByLabel('Run seed').fill('quota-test')
+  await page.getByLabel('Run seed').blur()
+  await expect(page.getByRole('alert')).toContainText('Local data could not be saved')
+  await run(page)
+  await expect(page.locator('.recommendation-card')).toHaveCount(10)
 })

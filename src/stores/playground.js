@@ -76,6 +76,14 @@ export const usePlayground = defineStore('playground', {
       this.player.name = name.trim()
       this.persist()
     },
+    setFavourite(gameId, selected) {
+      if (!this.player || !games.some((game) => game.id === gameId)) return
+      const ids = new Set(this.player.favouriteGameIds)
+      if (selected) ids.add(gameId)
+      else ids.delete(gameId)
+      this.player.favouriteGameIds = [...ids]
+      this.persist()
+    },
     deletePlayer() {
       const id = this.player.id
       this.document.players = this.players.filter((p) => p.id !== id)

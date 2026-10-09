@@ -2,7 +2,6 @@
   <section class="results-section" aria-label="Recommendation results">
     <div class="results-heading">
       <div class="section-title-inline">
-        <span class="section-number">04</span>
         <div>
           <h2>Recommendation results</h2>
         </div>

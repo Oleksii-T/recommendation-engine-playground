@@ -9,16 +9,19 @@ npm ci
 npm run serve
 ```
 
-Open http://localhost:8080. The existing Vue CLI build system is retained. Vue Router handles `/simulations` and `/games`; Pinia owns the local workspace. There is no backend, production integration, remote artwork, or AI API.
+Open http://localhost:8080. The existing Vue CLI build system is retained. Vue Router handles `/players`, `/players/:playerId/:tab`, and `/games`; Pinia owns the local workspace. There is no backend, production integration, remote artwork, or AI API.
 
 ## Try the workflow
 
-1. Choose **Slot enthusiast** and click **Load demo**, or create a blank player.
-2. Expand **Activity history** to generate a seeded batch, review its preview, and confirm it. **Inspect rounds** lets you change amounts, timestamps, play type, or rollback status.
-3. Set the platform, UTC as-of timestamp, and seed. **Run recommendation** shows the selected engine's result.
-4. Choose a second engine under **Compare with**, then **Run and compare**. The same player snapshot, catalogue, time, platform, and seed are used for both engines.
-5. Open **Why this game?** for contributions from the actual ranking calculation. Technical values are available in a secondary disclosure.
-6. Open **Advanced formula** to experiment with weights or recency and save a named local preset. Weight groups must total 1; unfinished edits do not replace the saved valid configuration.
+1. Open **Players** for the player table, showing names, bet and win totals/counts, and each player's last simulation run.
+2. Click **+ Add Player**, enter a name in the single-field modal, and submit. The new player's page opens on **General info**. **Load demo** offers the four built-in scenarios in a separate dialog.
+3. **General info** contains player metadata, activity summaries, favourite games, rename, reset, and delete actions.
+4. **Bets and Wins** contains the seeded activity generator, saved batches, and a paginated round table showing paired bet/win outcomes. Each row's **Edit** action opens the correction drawer.
+5. Open **Simulation** to configure and run an engine. Every saved engine result becomes its own subtab, labelled **Run 1 · V2**, **Run 2 · V1**, and so on. **+ New simulation** opens another configuration without editing previous results.
+6. Choose a second engine in the new-run configuration and click **Run and compare**. This saves two separate runs against identical inputs and opens their comparison. On saved runs, **Compare with** lists only existing results with the same input fingerprint.
+7. **Why this game?** shows the actual score contributions. **Advanced formula** on a new simulation provides formula presets and editable parameters; scoring groups must total 1.
+
+Player tabs and selected run/comparison IDs are encoded in the URL, so reload and browser navigation preserve the selected view. `/simulations` remains a compatibility redirect to `/players`. Existing locally saved players and runs use the same storage schema and appear automatically in the new structure.
 
 Four deterministic demo scenarios are available: cold start, slot enthusiast, live casino player, and mixed player. Loading an existing demo selects its local instance, preserving subsequent experiments.
 
@@ -48,7 +51,7 @@ src/domain/simulation/     Seeded generator, UTC daily stats, canonical fingerpr
 src/domain/engines/        Registry, V1, V2, configuration metadata, diversity and traces
 src/domain/scenarios/      Four scenarios generated from fixed seeds
 src/stores/               Pinia workspace and validated persistence adapter
-src/views/                Simulations and searchable/filterable catalogue routes
+src/views/                Players list, player detail tabs, and catalogue routes
 src/components/           Activity, formula, result and accessible detail components
 ```
 
@@ -69,7 +72,7 @@ npm run test:e2e
 
 The browser suite uses the existing server; it does not start or stop one. Set `PLAYWRIGHT_BASE_URL` for another address, or `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to reuse an installed Chromium executable. Each test uses isolated browser storage and does not modify the workspace in your regular browser.
 
-Playwright saves an HTML report in `artifacts/playwright-report/`, failure traces in `artifacts/test-results/`, and review screenshots in [artifacts/screenshots](artifacts/screenshots/). Screenshots cover the empty state, activity preview, personalized results, explanations, engine comparison, catalogue, and mobile/tablet layouts. See [validation notes](docs/VALIDATION.md).
+Playwright saves an HTML report in `artifacts/playwright-report/`, failure traces in `artifacts/test-results/`, and review screenshots in [artifacts/screenshots](artifacts/screenshots/). Screenshots cover the player table, creation modal, general information, bets/wins, saved-run subtabs, recommendations, comparisons, catalogue, and mobile/tablet layouts. See [validation notes](docs/VALIDATION.md).
 
 ```sh
 npm run format
