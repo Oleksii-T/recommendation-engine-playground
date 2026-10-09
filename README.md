@@ -37,6 +37,8 @@ Four deterministic demo scenarios are available: cold start, slot enthusiast, li
 
 ## Local data
 
+For server hosting with your existing PM2 and Nginx setup, see [deployment instructions](docs/DEPLOYMENT.md), [ecosystem.config.js](ecosystem.config.js), and [Nginx config](deploy/nginx.conf).
+
 One versioned JSON document is saved under `recommendation-playground:v1` in browser `localStorage`. It includes players, favourites, batches, bets, wins, immutable runs with input snapshots, settings, and presets. The hardcoded catalogue is loaded from source and is never persisted as mutable catalogue state.
 
 **Export JSON** downloads the complete document. **Import** validates schema version, game references, amounts, linked rounds and outcomes, formula groups, result traces, and settings before replacing the workspace. Invalid files leave existing data unchanged. Resetting all data, resetting a player, deleting a player, deleting a batch, and importing replacement data require confirmation. Browser quota and damaged-storage warnings retain the in-memory workspace and offer export/recovery.
