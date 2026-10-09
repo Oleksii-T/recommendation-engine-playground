@@ -567,7 +567,7 @@ test('every advanced formula value has an accessible explanation and a practical
 }) => {
   await demo(page)
   await newSimulation(page)
-  await page.locator('.formula-panel summary').click()
+  await tab(page, 'Values')
   const before = (await state(page)).settings.configs
   await expect(page.locator('.formula-fields .formula-info-button')).toHaveCount(24)
   await screenshot(page, '17-advanced-formula-legends.png')
@@ -614,7 +614,9 @@ test('every advanced formula value has an accessible explanation and a practical
   }
   expect((await state(page)).settings.configs).toEqual(before)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.getByRole('button', { name: 'About History: Similarity penalty', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'About Diversity: Similarity penalty', exact: true })
+    .click()
   await expect(page.getByRole('dialog')).toContainText('0.80 − (0.15 × 0.60) = 0.71')
   expect(
     await page.getByRole('dialog').evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth),
@@ -626,7 +628,10 @@ test('every advanced formula value has an accessible explanation and a practical
   await page.keyboard.press('Escape')
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.locator('#engine-version').selectOption('v1-popularity')
-  await expect(page.locator('.formula-panel')).toHaveAttribute('open', '')
+  await expect(page.getByRole('tab', { name: 'Values', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   await expect(page.locator('.formula-fields .formula-info-button')).toHaveCount(5)
   await checkEveryField()
   await page.getByRole('button', { name: 'About Baseline: Top boost', exact: true }).click()
@@ -638,10 +643,178 @@ test('every advanced formula value has an accessible explanation and a practical
   expect((await state(page)).settings.configs).toEqual(before)
 })
 
+test('run configuration tabs separate inputs, values and documentation while keeping the draft', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
+  const tabs = page.getByRole('tablist', { name: 'Run configuration sections', exact: true })
+  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Values', 'Documentation'])
+  await expect(tabs.getByRole('tab', { name: 'General', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(page.getByLabel('Run seed', { exact: true })).toBeVisible()
+  await expect(page.locator('.formula-body')).not.toBeVisible()
+  await expect(page.locator('.formula-documentation')).not.toBeVisible()
+  await screenshot(page, '29-run-configuration-general.png')
+  await page.getByLabel('Run seed', { exact: true }).fill('configuration-tabs')
+  await page.getByLabel('Run seed', { exact: true }).blur()
+  await tabs.getByRole('tab', { name: 'General', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(tabs.getByRole('tab', { name: 'Documentation', exact: true })).toBeFocused()
+  await expect(page.locator('.formula-documentation')).toBeVisible()
+  await expect(page.getByLabel('Run seed', { exact: true })).not.toBeVisible()
+  await page.keyboard.press('ArrowLeft')
+  await expect(tabs.getByRole('tab', { name: 'Values', exact: true })).toBeFocused()
+  await expect(page.locator('.formula-body')).toBeVisible()
+  await expect(page.locator('.formula-documentation')).not.toBeVisible()
+  await page.getByLabel('Recency half-life (days)', { exact: true }).fill('45')
+  await screenshot(page, '30-run-configuration-values.png')
+  await tab(page, 'Documentation')
+  await expect(page.locator('.formula-documentation')).toContainText('−days ago / 45')
+  await screenshot(page, '31-run-configuration-documentation.png')
+  await tab(page, 'General')
+  await expect(page.getByLabel('Run seed', { exact: true })).toHaveValue('configuration-tabs')
+  await tab(page, 'Values')
+  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
+  await page.getByLabel('Category match', { exact: true }).fill('0.5')
+  await tab(page, 'Documentation')
+  await expect(page.locator('.formula-documentation')).toContainText('0.50 × category')
+  await expect(
+    page.getByRole('button', { name: 'Run recommendation', exact: false }),
+  ).toBeDisabled()
+  await tab(page, 'General')
+  await expect(page.getByRole('alert')).toContainText('Content match weights must total 1')
+  await expect(
+    page.getByRole('button', { name: 'Run recommendation', exact: false }),
+  ).toBeDisabled()
+  await tab(page, 'Values')
+  await expect(page.getByLabel('Category match', { exact: true })).toHaveValue('0.5')
+  expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].categoryWeight).toBe(0.3)
+  await page.getByLabel('Category match', { exact: true }).fill('0.3')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await tab(page, 'Documentation')
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  await screenshot(page, '32-mobile-run-configuration-tabs.png', false)
+  await tab(page, 'Values')
+  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
+  await tab(page, 'Documentation')
+  await run(page)
+  const saved = (await state(page)).players[0].recommendationRuns[0]
+  expect(saved.seed).toBe('configuration-tabs')
+  expect(saved.engineConfig.halfLife).toBe(45)
+})
+
+test('run guide separates learning, matching, ranking and selection with live formulas', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
+  const guide = page.getByRole('region', { name: 'How recommendations are built', exact: true })
+  const original = (await state(page)).settings.configs
+  await page.getByLabel('Simulated platform', { exact: true }).selectOption('mobile')
+  await page.getByLabel('Compare with', { exact: true }).selectOption('v1-popularity')
+  await tab(page, 'Documentation')
+  await expect(guide.locator('.algorithm-step-title h4')).toHaveText([
+    'Choose eligible games',
+    'Learn player taste',
+    'Score each game',
+    'Choose a varied set',
+  ])
+  await expect(guide).toContainText('Bet amounts, wins and losses add no interest')
+  await expect(guide).toContainText('Without player interest:')
+  await expect(guide).toContainText('2 Familiar + 6 Discovery + 2 Explore')
+  await expect(guide).toContainText('support mobile')
+  await expect(guide).toContainText('runs both engines on the same player, date, platform and seed')
+  expect((await state(page)).settings.configs).toEqual(original)
+  await screenshot(page, '25-personalized-run-guide.png')
+  await tab(page, 'Values')
+  await expect(page.locator('.formula-group-heading h4')).toHaveText([
+    'History',
+    'Content match',
+    'Familiar',
+    'Discovery',
+    'Exploration',
+    'Cold start',
+    'Diversity',
+  ])
+  function valuesGroup(name) {
+    return page
+      .locator('.formula-group')
+      .filter({ has: page.getByRole('heading', { name, exact: true }) })
+  }
+  function group(name) {
+    return page
+      .locator('.formula-doc-group')
+      .filter({ has: page.getByRole('heading', { name, exact: true }) })
+  }
+  await expect(
+    valuesGroup('History').getByLabel('Similarity penalty', { exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    valuesGroup('Diversity').getByLabel('Similarity penalty', { exact: true }),
+  ).toBeVisible()
+  await tab(page, 'Documentation')
+  await expect(group('Familiar').locator('code')).toContainText('0.65 × game interest')
+  await expect(group('Discovery').locator('code')).toContainText('0.70 × content match')
+  await expect(group('Exploration').locator('code')).toContainText('0.45 × content match')
+  await expect(group('Cold start').locator('code')).toContainText('0.70 × popularity')
+  await tab(page, 'Values')
+  await page.getByLabel('Recency half-life (days)', { exact: true }).fill('45')
+  await tab(page, 'Documentation')
+  await expect(group('History').locator('code')).toContainText('−days ago / 45')
+  await expect(group('History')).toContainText('half strength after 45 days')
+  await tab(page, 'Values')
+  await page.getByLabel('Category match', { exact: true }).fill('0.333')
+  await page.getByLabel('Provider match', { exact: true }).fill('0.167')
+  await tab(page, 'Documentation')
+  await expect(group('Content match').locator('code')).toContainText(
+    '0.333 × category + 0.167 × provider',
+  )
+  await expect(page.getByRole('button', { name: 'Run recommendation', exact: false })).toBeEnabled()
+  await tab(page, 'Values')
+  await page.getByLabel('Category match', { exact: true }).fill('0.5')
+  await tab(page, 'Documentation')
+  await expect(group('Content match').locator('code')).toContainText('0.50 × category')
+  await expect(group('Content match')).toContainText('contributes about 0.40')
+  await expect(
+    page.getByRole('button', { name: 'Run recommendation', exact: false }),
+  ).toBeDisabled()
+  await tab(page, 'Values')
+  await page.getByRole('button', { name: 'Restore defaults', exact: true }).click()
+  await tab(page, 'Documentation')
+  await expect(group('Content match').locator('code')).toContainText('0.30 × category')
+  await expect(group('History').locator('code')).toContainText('−days ago / 30')
+  await page
+    .locator('.formula-documentation')
+    .screenshot({ path: path.join(screenshots, '26-formula-computation-groups.png') })
+  await page.locator('#engine-version').selectOption('v1-popularity')
+  await expect(guide.locator('.algorithm-steps > li')).toHaveCount(3)
+  await expect(guide).toContainText("This player's history and favourites are ignored")
+  await expect(guide.locator('.algorithm-branch')).toHaveCount(0)
+  await expect(page.locator('.formula-doc-heading h4')).toHaveText(['Baseline', 'Diversity'])
+  await expect(group('Baseline').locator('code')).toContainText(
+    '0.85 × popularity + 0.06 × Featured + 0.06 × Top + 0.03 × freshness',
+  )
+  await screenshot(page, '27-baseline-run-guide.png')
+  await page.locator('#engine-version').selectOption('v2-hybrid-2-6-2')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  for (const code of await page.locator('.formula-group-guide code').all())
+    expect(await code.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBeTruthy()
+  await screenshot(page, '28-mobile-run-guide.png')
+  expect((await state(page)).settings.configs).toEqual(original)
+})
+
 test('formula validation, presets and immutable run configuration', async ({ page }) => {
   await demo(page)
   await newSimulation(page)
-  await page.locator('.formula-panel summary').click()
+  await tab(page, 'Values')
   await page.getByLabel('Category match', { exact: true }).fill('0.5')
   await expect(
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
@@ -655,13 +828,13 @@ test('formula validation, presets and immutable run configuration', async ({ pag
   expect(data.presets).toHaveLength(1)
   expect(data.players[0].recommendationRuns[0].engineConfig.halfLife).toBe(45)
   await newSimulation(page)
-  await page.locator('.formula-panel summary').click()
+  await tab(page, 'Values')
   await page.getByRole('button', { name: 'Restore defaults' }).click()
   expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].halfLife).toBe(30)
   await page.getByLabel('Saved presets', { exact: true }).selectOption(data.presets[0].id)
   await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
   await page.reload()
-  await page.locator('.formula-panel summary').click()
+  await tab(page, 'Values')
   await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
 })
 
@@ -804,12 +977,13 @@ test('recoverable storage errors, unknown players and invalid draft persistence'
   await expect(page.getByRole('alert')).not.toBeVisible()
   await demo(page)
   await newSimulation(page)
-  await page.locator('.formula-panel summary').click()
+  await tab(page, 'Values')
   await page.getByLabel('Category match', { exact: true }).fill('0.9')
   await expect(
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
   ).toBeDisabled()
   expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].categoryWeight).toBe(0.3)
+  await tab(page, 'General')
   await page.getByLabel('Run seed').fill('')
   await page.getByLabel('Run seed').blur()
   await page.reload()

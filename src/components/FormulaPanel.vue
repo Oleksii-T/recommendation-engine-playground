@@ -1,16 +1,18 @@
 <template>
-  <details class="formula-panel">
-    <summary><span>⚙</span> Advanced formula</summary>
-    <div class="formula-body">
+  <div class="formula-panel">
+    <div v-show="mode === 'values'" class="formula-body">
       <div class="section-toolbar">
         <p class="muted">Scoring groups must total 1.</p>
         <button class="text-button" @click="restore">Restore defaults</button>
       </div>
       <div v-for="group in groups" :key="group" class="formula-group">
-        <h4>{{ group }}</h4>
+        <div class="formula-group-heading">
+          <h4>{{ group }}</h4>
+          <span>{{ groupGuides[group].stage }}</span>
+        </div>
         <div class="formula-fields">
           <div
-            v-for="f in store.engine.parameters.filter((f) => f.group === group)"
+            v-for="f in fields.filter((f) => f.group === group)"
             :key="f.key"
             class="formula-field"
           >
@@ -94,7 +96,25 @@
       </div>
       <p v-if="error" class="error-text" role="alert">{{ error }}</p>
     </div>
-  </details>
+    <div v-show="mode === 'documentation'" class="formula-documentation">
+      <AlgorithmGuide
+        :hybrid="store.engine.id === 'v2-hybrid-2-6-2'"
+        :platform="store.settings.platform"
+        :compare="!!store.settings.compareEngine"
+      />
+      <div v-for="group in groups" :key="group" class="formula-doc-group">
+        <div class="formula-doc-heading">
+          <h4>{{ group }}</h4>
+          <span>{{ groupGuides[group].stage }}</span>
+        </div>
+        <p class="formula-group-purpose">{{ groupGuides[group].purpose }}</p>
+        <div class="formula-group-guide">
+          <code>{{ groupGuides[group].formula }}</code>
+          <p>{{ groupGuides[group].note }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
   <ModalDialog v-if="help" :title="help.title" class="formula-legend" @close="help = null">
     <p>{{ help.description }}</p>
     <div class="formula-example">
@@ -115,17 +135,42 @@
   </ModalDialog>
 </template>
 <script setup>
+/* eslint-env vue/setup-compiler-macros */
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { usePlayground } from '../stores/playground.js'
 import { validateConfig } from '../domain/engines/shared/config.js'
 import { formulaHelp } from '../content/formulaHelp.js'
+import { formulaGroupGuide } from '../content/formulaGroupGuide.js'
 import ModalDialog from './ModalDialog.vue'
+import AlgorithmGuide from './AlgorithmGuide.vue'
+defineProps({ mode: { type: String, default: 'values' } })
 const store = usePlayground(),
   name = ref(''),
   error = ref(''),
   help = ref(null)
 const config = ref({ ...store.settings.configs[store.engine.id] }),
-  groups = computed(() => [...new Set(store.engine.parameters.map((f) => f.group))]),
+  fields = computed(() =>
+    store.engine.parameters.map((field) =>
+      field.key === 'diversityPenalty' ? { ...field, group: 'Diversity' } : field,
+    ),
+  ),
+  groups = computed(() =>
+    [
+      'History',
+      'Content match',
+      'Familiar',
+      'Discovery',
+      'Exploration',
+      'Cold start',
+      'Baseline',
+      'Diversity',
+    ].filter((group) => fields.value.some((field) => field.group === group)),
+  ),
+  groupGuides = computed(() =>
+    Object.fromEntries(
+      groups.value.map((group) => [group, formulaGroupGuide(group, config.value)]),
+    ),
+  ),
   validation = computed(() => validateConfig(store.engine.parameters, config.value))
 watch(
   () => store.settings.configs[store.engine.id],

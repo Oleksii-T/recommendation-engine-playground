@@ -8,46 +8,61 @@
       <span class="pill">{{ store.engine.version }}</span>
     </div>
     <div class="section-body">
-      <div class="form-grid run-form">
-        <label
-          >Simulated platform<select
-            aria-label="Simulated platform"
-            v-model="store.settings.platform"
-            @change="store.persist()"
-          >
-            <option value="desktop">Desktop</option>
-            <option value="mobile">Mobile</option>
-          </select></label
-        ><label
-          >As-of date & time (UTC)<input
-            :value="store.settings.asOf.slice(0, 16)"
-            type="datetime-local"
-            required
-            @change="changeDate($event.target.value)" /></label
-        ><label
-          >Run seed<input
-            v-model="store.settings.seed"
-            maxlength="1000"
-            required
-            @change="store.persist()" /></label
-        ><label
-          >Compare with<select
-            aria-label="Compare with"
-            v-model="store.settings.compareEngine"
-            @change="store.persist()"
-          >
-            <option value="">No comparison</option>
-            <option
-              v-for="e in engines.filter((e) => e.id !== store.engine.id)"
-              :key="e.id"
-              :value="e.id"
+      <TabBar
+        :tabs="configurationTabs"
+        :active="activeTab"
+        label="Run configuration sections"
+        prefix="configuration"
+        @select="activeTab = $event"
+      />
+      <div
+        id="configuration-panel"
+        class="configuration-tab-panel"
+        role="tabpanel"
+        :aria-labelledby="`configuration-tab-${activeTab}`"
+        tabindex="0"
+      >
+        <div v-show="activeTab === 'general'" class="form-grid run-form">
+          <label
+            >Simulated platform<select
+              aria-label="Simulated platform"
+              v-model="store.settings.platform"
+              @change="store.persist()"
             >
-              {{ e.label }}
-            </option>
-          </select></label
-        >
+              <option value="desktop">Desktop</option>
+              <option value="mobile">Mobile</option>
+            </select></label
+          ><label
+            >As-of date & time (UTC)<input
+              :value="store.settings.asOf.slice(0, 16)"
+              type="datetime-local"
+              required
+              @change="changeDate($event.target.value)" /></label
+          ><label
+            >Run seed<input
+              v-model="store.settings.seed"
+              maxlength="1000"
+              required
+              @change="store.persist()" /></label
+          ><label
+            >Compare with<select
+              aria-label="Compare with"
+              v-model="store.settings.compareEngine"
+              @change="store.persist()"
+            >
+              <option value="">No comparison</option>
+              <option
+                v-for="e in engines.filter((e) => e.id !== store.engine.id)"
+                :key="e.id"
+                :value="e.id"
+              >
+                {{ e.label }}
+              </option>
+            </select></label
+          >
+        </div>
+        <div v-show="activeTab !== 'general'"><FormulaPanel :mode="activeTab" /></div>
       </div>
-      <FormulaPanel />
       <p v-if="formulaError" class="error-text" role="alert">{{ formulaError }}</p>
       <p v-if="runError" class="error-text" role="alert">{{ runError }}</p>
       <div class="form-footer">
@@ -80,9 +95,16 @@ import { usePlayground } from '../stores/playground.js'
 import { engines } from '../domain/engines/registry.js'
 import { validateConfig } from '../domain/engines/shared/config.js'
 import FormulaPanel from './FormulaPanel.vue'
+import TabBar from './TabBar.vue'
 const emit = defineEmits(['run']),
   store = usePlayground(),
-  runError = ref('')
+  runError = ref(''),
+  activeTab = ref('general')
+const configurationTabs = [
+  { id: 'general', label: 'General' },
+  { id: 'values', label: 'Values' },
+  { id: 'documentation', label: 'Documentation' },
+]
 const formulaError = computed(
   () =>
     store.formulaErrors[store.engine.id] ||
