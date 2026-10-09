@@ -140,7 +140,7 @@
           <h3>Saved batches</h3>
           <span class="muted small-text">Most recent first</span>
         </div>
-        <div v-for="b in [...player.generationBatches].reverse()" :key="b.id" class="batch-row">
+        <div v-for="b in savedBatches" :key="b.id" class="batch-row">
           <div>
             <strong>{{ gameById(b.gameId)?.name }}</strong
             ><span
@@ -284,6 +284,11 @@ const amount = (n) =>
     Number(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
   timestamp = (d) => d.slice(0, 19).replace('T', ' ')
 const playLabel = { paid: 'Organic', bonus: 'Bonus-funded', free: 'Free rounds' }
+const savedBatches = computed(() =>
+  [...props.player.generationBatches]
+    .reverse()
+    .sort((a, b) => b.config.dateTime.localeCompare(a.config.dateTime)),
+)
 watch(form, () => {
   preview.value = null
   error.value = ''

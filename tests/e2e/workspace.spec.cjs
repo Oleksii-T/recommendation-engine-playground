@@ -219,6 +219,60 @@ test('Bets and Wins generates activity, corrects a round, rolls back and deletes
 test('activity table paginates and a second player has an isolated history', async ({ page }) => {
   await demo(page)
   await tab(page, 'Bets and Wins')
+  const section = page.locator('.workflow-section')
+  await section.locator('summary').first().click()
+  const batches = page.locator('.batch-history .batch-row')
+  await expect(batches).toHaveCount(12)
+  await expect(batches.first()).toContainText('2026-10-07')
+  await expect(batches.last()).toContainText('2026-09-10')
+  const originalBatches = (await state(page)).players[0].generationBatches
+  await section.getByLabel('Rounds', { exact: true }).fill('1')
+  await section.getByLabel('Sessions', { exact: true }).fill('1')
+  for (const date of ['2026-10-01T12:00', '2026-10-09T12:00']) {
+    await section.getByLabel('Start date & time (UTC)', { exact: true }).fill(date)
+    await section.getByRole('button', { name: 'Preview batch', exact: false }).click()
+    await section.getByRole('button', { name: 'Confirm & add activity', exact: false }).click()
+    if (date.startsWith('2026-10-01')) {
+      await expect(batches.first()).toContainText('2026-10-07')
+      await expect(batches.last()).toContainText('2026-09-10')
+    }
+  }
+  await expect(batches).toHaveCount(14)
+  await expect(batches.first()).toContainText('2026-10-09')
+  const dates = await batches.locator('div > span').allTextContents()
+  expect(dates.map((text) => text.trim().slice(0, 10))).toEqual([
+    '2026-10-09',
+    '2026-10-07',
+    '2026-10-06',
+    '2026-10-05',
+    '2026-10-04',
+    '2026-10-01',
+    '2026-09-25',
+    '2026-09-24',
+    '2026-09-23',
+    '2026-09-22',
+    '2026-09-13',
+    '2026-09-12',
+    '2026-09-11',
+    '2026-09-10',
+  ])
+  expect((await state(page)).players[0].generationBatches.slice(0, 12)).toEqual(originalBatches)
+  await page
+    .locator('.batch-history')
+    .screenshot({ path: path.join(screenshots, '23-newest-activity-batches.png') })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page
+    .locator('.batch-history')
+    .screenshot({ path: path.join(screenshots, '24-mobile-activity-batches.png') })
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.reload()
+  await section.locator('summary').first().click()
+  await expect(batches.first()).toContainText('2026-10-09')
+  await expect(batches.last()).toContainText('2026-09-10')
+  await section.locator('summary').first().click()
   await expect(page.locator('.rounds-table tbody tr')).toHaveCount(50)
   await expect(page.getByText('Page 1 of 13', { exact: true })).toBeVisible()
   const first = await page.locator('.rounds-table tbody tr').first().textContent()
