@@ -296,10 +296,24 @@ nav a.router-link-active {
   gap: 12px;
   font-size: 12px;
   color: #657080;
+  min-width: 0;
 }
-.breadcrumb strong {
+.breadcrumb strong,
+.breadcrumb h1 {
   color: #657080;
   font-weight: 500;
+}
+.breadcrumb h1 {
+  font-size: inherit;
+  letter-spacing: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.breadcrumb > a,
+.breadcrumb > button,
+.topbar-actions {
+  flex-shrink: 0;
 }
 .topbar-actions {
   display: flex;
@@ -2382,9 +2396,10 @@ table tr:hover td {
   margin-top: 10px;
   font-size: 12px;
 }
-.player-heading h1 {
-  margin-top: 10px;
-  overflow-wrap: anywhere;
+.players-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
 }
 .tab-bar {
   display: flex;
@@ -2510,9 +2525,6 @@ table tr:hover td {
   .players-table th,
   .players-table td {
     padding: 14px 16px;
-  }
-  .player-page .page-heading {
-    margin-bottom: 18px;
   }
   .tab-bar {
     gap: 20px;

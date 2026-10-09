@@ -63,12 +63,13 @@
             ☰
           </button>
           <template v-if="route.name === 'player'"
-            ><RouterLink to="/players">Players</RouterLink><span aria-hidden="true">/</span
-            ><strong>{{
-              store.players.find((p) => p.id === route.params.playerId)?.name || 'Player'
-            }}</strong></template
+            ><RouterLink to="/players">Players</RouterLink><span aria-hidden="true">/</span>
+            <h1>
+              {{ store.players.find((p) => p.id === route.params.playerId)?.name || 'Player' }}
+            </h1></template
           >
-          <strong v-else>{{ route.path === '/games' ? 'Game catalogue' : 'Players' }}</strong>
+          <strong v-else-if="route.path === '/games'">Game catalogue</strong>
+          <h1 v-else>Players</h1>
         </div>
         <div class="topbar-actions">
           <button class="text-button" @click="importInput.click()">↥ <span>Import</span></button

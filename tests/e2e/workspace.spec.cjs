@@ -64,6 +64,10 @@ test('Players list, name-only creation modal, redirect, rename and deletion', as
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   await expect(page).toHaveURL(/\/players$/)
+  await expect(
+    page.locator('.topbar').getByRole('heading', { name: 'Players', exact: true }),
+  ).toHaveCount(1)
+  await expect(page.locator('.page h1')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /Players/ }).first()).toBeVisible()
   await expect(page.locator('.players-table th')).toHaveText([
     'Name',
@@ -84,6 +88,14 @@ test('Players list, name-only creation modal, redirect, rename and deletion', as
   await expect(page.locator('.players-table tbody tr')).toHaveCount(0)
   await create(page)
   await expect(page).toHaveURL(/\/players\/[^/]+\/general$/)
+  await expect(
+    page.locator('.topbar').getByRole('heading', { name: 'Test explorer', exact: true }),
+  ).toHaveCount(1)
+  await expect(page.locator('.player-page h1')).toHaveCount(0)
+  await expect(page.locator('.player-page').getByRole('link', { name: /Players/ })).toHaveCount(0)
+  await expect(
+    page.locator('.topbar').getByRole('link', { name: 'Players', exact: true }),
+  ).toBeVisible()
   await expect(page.getByRole('tab', { name: 'General info' })).toHaveAttribute(
     'aria-selected',
     'true',

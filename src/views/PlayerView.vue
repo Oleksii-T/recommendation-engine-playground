@@ -1,12 +1,6 @@
 <template>
   <div class="page player-page">
     <template v-if="player">
-      <div class="page-heading">
-        <div class="player-heading">
-          <RouterLink to="/players" class="text-button">← Players</RouterLink>
-          <h1>{{ player.name }}</h1>
-        </div>
-      </div>
       <TabBar
         :tabs="tabs"
         :active="activeTab"

@@ -1,7 +1,6 @@
 <template>
   <div class="page">
-    <div class="page-heading">
-      <h1>Players</h1>
+    <div class="players-toolbar">
       <div class="button-group">
         <button class="text-button" @click="showDemos = true">Load demo</button
         ><button class="button primary" @click="showCreate = true">＋ Add Player</button>
