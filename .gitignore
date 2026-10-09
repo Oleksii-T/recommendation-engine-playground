@@ -21,3 +21,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Generated browser reports and traces
+/artifacts/test-results/
+/artifacts/playwright-report/
