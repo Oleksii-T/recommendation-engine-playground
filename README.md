@@ -17,7 +17,7 @@ Open http://localhost:8080. The existing Vue CLI build system is retained. Vue R
 2. Click **+ Add Player**, enter a name in the single-field modal, and submit. The new player's page opens on **General info**. **Load demo** offers the four built-in scenarios in a separate dialog.
 3. **General info** contains player metadata, activity summaries, favourite games, rename, reset, and delete actions.
 4. **Bets and Wins** contains the seeded activity generator, saved batches, and a paginated round table showing paired bet/win outcomes. Each row's **Edit** action opens the correction drawer.
-5. Open **Simulation** to configure and run an engine. Every saved engine result becomes its own subtab, labelled **Run 1 · V2**, **Run 2 · V1**, and so on. **+ New simulation** opens another configuration without editing previous results.
+5. Open **Simulation** to configure and run an engine. Every saved engine result becomes its own subtab, labelled **Run 1 · V2**, **Run 2 · V1**, and so on. Newest runs appear first in a single horizontally scrollable row. **+ New simulation** stays on the left and opens another configuration. Each subtab's **×** or the selected result's **Delete simulation** button deletes that run after confirmation; remaining labels stay stable.
 6. Choose a second engine in the new-run configuration and click **Run and compare**. This saves two separate runs against identical inputs and opens their comparison. On saved runs, **Compare with** lists only existing results with the same input fingerprint.
 7. **Why this game?** shows the actual score contributions. **Advanced formula** on a new simulation provides formula presets and editable parameters; scoring groups must total 1.
 

@@ -2388,9 +2388,15 @@ table tr:hover td {
 }
 .tab-bar {
   display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
   gap: 28px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+}
+.tab-item {
+  display: inline-flex;
+  flex: 0 0 auto;
 }
 .tab-bar button {
   border: 0;
@@ -2435,16 +2441,21 @@ table tr:hover td {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-.simulation-toolbar {
+.simulation-navigation {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  min-width: 0;
+  margin-bottom: 24px;
+}
+.simulation-navigation > .button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .run-tabs {
+  flex: 1 1 0;
   gap: 8px;
-  margin-bottom: 24px;
+  scrollbar-width: thin;
 }
 .run-tabs button {
   font-size: 11px;
@@ -2454,9 +2465,20 @@ table tr:hover td {
 .run-tabs button.selected {
   background: var(--accent-light);
 }
+.run-tabs .delete-run-tab {
+  padding: 10px 9px;
+  font-size: 18px;
+  border-radius: 0;
+}
+.delete-run-tab:hover {
+  color: var(--red);
+  background: var(--accent-light);
+}
 .run-selection {
   display: flex;
-  justify-content: flex-end;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 20px;
 }
 .run-selection label {
@@ -2525,8 +2547,20 @@ table tr:hover td {
   .modal-body {
     padding: 20px;
   }
-  .simulation-toolbar h2 {
-    font-size: 15px;
+  .simulation-navigation {
+    gap: 8px;
+  }
+  .simulation-navigation > .button {
+    padding: 10px;
+    font-size: 11px;
+  }
+  .run-selection label {
+    width: 170px;
+    min-width: 0;
+  }
+  .run-selection > .button {
+    padding: 10px;
+    font-size: 11px;
   }
 }
 .section-heading > .player-actions {

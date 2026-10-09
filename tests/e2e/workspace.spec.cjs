@@ -304,6 +304,115 @@ test('comparison creates two run subtabs and uses identical snapshots', async ({
   await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
 })
 
+test('simulation deletion cancels, removes comparisons and selects the next run or new draft', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
+  await page.getByLabel('Compare with', { exact: true }).selectOption('v1-popularity')
+  await run(page, true)
+  const before = (await state(page)).players[0]
+  const tabs = page.getByRole('tablist', { name: 'Simulation runs' })
+  await expect(tabs.getByRole('tab')).toHaveText(['Run 2 · V1', 'Run 1 · V2'])
+  await expect(page.getByRole('heading', { name: 'Simulation', exact: true })).toHaveCount(0)
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveCount(2)
+  expect((await state(page)).players[0].recommendationRuns).toEqual(before.recommendationRuns)
+  page.once('dialog', (dialog) => dialog.accept())
+  await tabs.getByRole('button', { name: 'Delete simulation Run 2 · V1', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveText(['Run 1 · V2'])
+  await expect(page).toHaveURL(/compare=none/)
+  await expect(page.locator('.comparison-panel')).toHaveCount(0)
+  await newSimulation(page)
+  await run(page)
+  await expect(tabs.getByRole('tab')).toHaveText(['Run 2 · V2', 'Run 1 · V2'])
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await expect(tabs.getByRole('tab', { name: 'Run 1 · V2', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await expect(tabs.getByRole('tab')).toBeFocused()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await expect(tabs).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Run configuration', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New simulation', exact: false })).toBeFocused()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Run configuration', exact: true })).toBeVisible()
+  const after = (await state(page)).players[0]
+  expect(after.recommendationRuns).toHaveLength(0)
+  expect(after.bets).toEqual(before.bets)
+  expect(after.wins).toEqual(before.wins)
+  expect(after.favouriteGameIds).toEqual(before.favouriteGameIds)
+})
+
+test('many run subtabs stay in a scrollable row with the new button on the left', async ({
+  page,
+}) => {
+  await demo(page, 'cold')
+  for (let i = 0; i < 16; i++) {
+    await newSimulation(page)
+    await run(page)
+  }
+  const tabs = page.getByRole('tablist', { name: 'Simulation runs' })
+  await expect(tabs.getByRole('tab').first()).toHaveText('Run 16 · V2')
+  async function checkRow() {
+    const geometry = await tabs.evaluate((bar) => {
+      const items = [...bar.querySelectorAll('[role="tab"]')]
+      const button = document.getElementById('new-simulation-button').getBoundingClientRect()
+      return {
+        overflowing: bar.scrollWidth > bar.clientWidth,
+        sameRow: items.every((item) => item.offsetTop === items[0].offsetTop),
+        buttonLeft: button.right <= bar.getBoundingClientRect().left,
+        pageFits: document.documentElement.scrollWidth <= window.innerWidth,
+      }
+    })
+    expect(geometry).toEqual({ overflowing: true, sameRow: true, buttonLeft: true, pageFits: true })
+    await tabs.getByRole('tab').first().focus()
+    await page.keyboard.press('End')
+    await expect(tabs.getByRole('tab').last()).toBeFocused()
+    await expect.poll(() => tabs.evaluate((bar) => bar.scrollLeft)).toBeGreaterThan(0)
+    const visible = await tabs
+      .getByRole('tab')
+      .last()
+      .evaluate((tab) => {
+        const item = tab.parentElement.getBoundingClientRect()
+        const bar = tab.closest('[role="tablist"]').getBoundingClientRect()
+        return item.left >= bar.left - 1 && item.right <= bar.right + 1
+      })
+    expect(visible).toBeTruthy()
+    await page.keyboard.press('Home')
+    await expect(tabs.getByRole('tab').first()).toBeFocused()
+    await expect.poll(() => tabs.evaluate((bar) => bar.scrollLeft)).toBe(0)
+  }
+  await checkRow()
+  await screenshot(page, '15-scrollable-simulation-tabs.png', false)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await checkRow()
+  await screenshot(page, '16-mobile-run-tabs.png', false)
+  // Older exports have no display numbers; deleting an old run must not renumber the rest.
+  await page.evaluate((key) => {
+    const saved = JSON.parse(localStorage.getItem(key))
+    saved.players[0].recommendationRuns.forEach((result) => delete result.sequence)
+    localStorage.setItem(key, JSON.stringify(saved))
+  }, KEY)
+  await page.reload()
+  await expect(tabs.getByRole('tab')).toHaveCount(16)
+  await expect(tabs.getByRole('tab').first()).toHaveAttribute('aria-selected', 'true')
+  page.once('dialog', (dialog) => dialog.accept())
+  await tabs.getByRole('button', { name: 'Delete simulation Run 1 · V2', exact: true }).click()
+  await expect(tabs.getByRole('tab')).toHaveCount(15)
+  await expect(tabs.getByRole('tab').first()).toHaveText('Run 16 · V2')
+  await expect(tabs.getByRole('tab').last()).toHaveText('Run 2 · V2')
+  await page.reload()
+  await expect(tabs.getByRole('tab').first()).toHaveText('Run 16 · V2')
+  await newSimulation(page)
+  await run(page)
+  await expect(tabs.getByRole('tab').first()).toHaveText('Run 17 · V2')
+})
+
 test('formula validation, presets and immutable run configuration', async ({ page }) => {
   await demo(page)
   await newSimulation(page)

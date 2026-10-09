@@ -139,6 +139,8 @@ export function validateState(data) {
           run.playerId === p.id &&
           date(run.asOf) &&
           date(run.createdAt) &&
+          (run.sequence === undefined ||
+            (Number.isSafeInteger(run.sequence) && run.sequence > 0)) &&
           text(run.inputFingerprint) &&
           text(run.playerFingerprint) &&
           text(run.seed) &&

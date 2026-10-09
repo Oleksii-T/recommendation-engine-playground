@@ -368,9 +368,18 @@ test('state import validates linked activity, versions, amounts, runs and preset
     },
   }
   assert.deepEqual(validateState(state), state)
+  const numbered = clone(state)
+  numbered.players[0].recommendationRuns[0].sequence = 4
+  assert.deepEqual(validateState(numbered), numbered)
   for (const mutation of [
     (s) => {
       s.schemaVersion = 7
+    },
+    (s) => {
+      s.players[0].recommendationRuns[0].sequence = '4'
+    },
+    (s) => {
+      s.players[0].recommendationRuns[0].sequence = 0
     },
     (s) => {
       s.players[0].bets[0].amount = -1

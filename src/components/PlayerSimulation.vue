@@ -1,29 +1,36 @@
 <template>
-  <div class="simulation-toolbar">
-    <h2>Simulation</h2>
-    <button v-if="active !== 'new'" class="button" @click="selectRun('new')">
+  <div class="simulation-navigation">
+    <button
+      id="new-simulation-button"
+      class="button"
+      :aria-pressed="active === 'new'"
+      aria-controls="run-panel"
+      @click="selectRun('new')"
+    >
       ＋ New simulation
     </button>
+    <TabBar
+      v-if="tabs.length"
+      :tabs="tabs"
+      :active="active"
+      label="Simulation runs"
+      prefix="run"
+      secondary
+      @select="selectRun"
+      @delete="deleteSimulation"
+    />
   </div>
-  <TabBar
-    v-if="tabs.length"
-    :tabs="tabs"
-    :active="active"
-    label="Simulation runs"
-    prefix="run"
-    secondary
-    @select="selectRun"
-  />
   <div
     id="run-panel"
     role="tabpanel"
-    :aria-labelledby="tabs.length ? `run-tab-${active}` : undefined"
+    :aria-labelledby="active === 'new' ? 'new-simulation-button' : `run-tab-${active}`"
     tabindex="0"
     class="run-tab-panel"
   >
     <RunConfiguration v-if="active === 'new'" @run="created" />
     <template v-else-if="run"
       ><div class="run-selection">
+        <button class="button danger" @click="deleteSimulation(run.id)">Delete simulation</button>
         <label
           >Compare with<select
             aria-label="Compare with"
@@ -43,7 +50,7 @@
 </template>
 <script setup>
 /* eslint-env vue/setup-compiler-macros */
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlayground } from '../stores/playground.js'
 import { getEngine } from '../domain/engines/registry.js'
@@ -65,13 +72,12 @@ const active = computed(() =>
 )
 const run = computed(() => runs.value.find((r) => r.id === active.value) || null)
 const runLabel = (r) =>
-  `Run ${runs.value.findIndex((candidate) => candidate.id === r.id) + 1} · ${
+  `Run ${r.sequence || runs.value.findIndex((candidate) => candidate.id === r.id) + 1} · ${
     getEngine(r.engineId).label.split(' · ')[0]
   }`
-const tabs = computed(() => [
-  ...runs.value.map((r) => ({ id: r.id, label: runLabel(r) })),
-  ...(active.value === 'new' && runs.value.length ? [{ id: 'new', label: 'New simulation' }] : []),
-])
+const tabs = computed(() =>
+  [...runs.value].reverse().map((r) => ({ id: r.id, label: runLabel(r), deletable: true })),
+)
 const comparisons = computed(() =>
   run.value
     ? runs.value.filter(
@@ -102,5 +108,23 @@ function selectComparison(id) {
 }
 function created(results) {
   router.push({ query: { run: results[0].id, ...(results[1] ? { compare: results[1].id } : {}) } })
+}
+async function deleteSimulation(id) {
+  const target = runs.value.find((r) => r.id === id)
+  if (!target || !window.confirm(`Delete simulation ${runLabel(target)}?`)) return
+  const index = tabs.value.findIndex((tab) => tab.id === id)
+  const remaining = tabs.value.filter((tab) => tab.id !== id)
+  const selected =
+    active.value === id
+      ? remaining[Math.min(index, remaining.length - 1)]?.id || 'new'
+      : active.value
+  const query = { ...route.query, run: selected }
+  if (query.compare === id || active.value === id) query.compare = 'none'
+  store.deleteRun(id)
+  await router.replace({ query })
+  await nextTick()
+  document
+    .getElementById(selected === 'new' ? 'new-simulation-button' : `run-tab-${selected}`)
+    ?.focus()
 }
 </script>

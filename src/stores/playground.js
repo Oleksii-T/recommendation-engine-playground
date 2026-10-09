@@ -151,7 +151,12 @@ export const usePlayground = defineStore('playground', {
       const ids = [this.settings.activeEngine]
       if (compare && this.settings.compareEngine && this.settings.compareEngine !== ids[0])
         ids.push(this.settings.compareEngine)
-      const results = ids.map((engineId) => ({
+      const nextSequence =
+        Math.max(
+          0,
+          ...this.player.recommendationRuns.map((run, index) => run.sequence || index + 1),
+        ) + 1
+      const results = ids.map((engineId, index) => ({
         ...runEngine({
           ...args,
           engineId,
@@ -159,6 +164,7 @@ export const usePlayground = defineStore('playground', {
         }),
         id: uniqueId(),
         createdAt: new Date().toISOString(),
+        sequence: nextSequence + index,
       }))
       this.player.recommendationRuns.push(...results)
       this.persist()
@@ -166,6 +172,16 @@ export const usePlayground = defineStore('playground', {
         ? 'Both engines ran against the same input snapshot.'
         : 'Recommendation run saved.'
       return results
+    },
+    deleteRun(id) {
+      if (!this.player?.recommendationRuns.some((run) => run.id === id)) return
+      // Give older exports stable display numbers before removing any result.
+      this.player.recommendationRuns.forEach((run, index) => {
+        if (!run.sequence) run.sequence = index + 1
+      })
+      this.player.recommendationRuns = this.player.recommendationRuns.filter((run) => run.id !== id)
+      this.persist()
+      this.notice = 'Simulation deleted.'
     },
     loadScenario(id) {
       const fresh = buildScenario(id),
