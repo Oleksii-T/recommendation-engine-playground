@@ -425,6 +425,82 @@ test('many run subtabs stay in a scrollable row with the new button on the left'
   await expect(tabs.getByRole('tab').first()).toHaveText('Run 17 · V2')
 })
 
+test('every advanced formula value has an accessible explanation and a practical example', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
+  await page.locator('.formula-panel summary').click()
+  const before = (await state(page)).settings.configs
+  await expect(page.locator('.formula-fields .formula-info-button')).toHaveCount(24)
+  await screenshot(page, '17-advanced-formula-legends.png')
+  async function checkEveryField() {
+    const fields = page.locator('.formula-fields .formula-field')
+    for (let index = 0; index < (await fields.count()); index++) {
+      const field = fields.nth(index)
+      const input = field.locator('input')
+      const value = await input.inputValue()
+      const button = field.getByRole('button')
+      await button.click()
+      const legend = page.getByRole('dialog')
+      await expect(legend).toBeVisible()
+      await expect(legend.locator('.modal-body > p').first()).not.toHaveText(
+        /Adjust .* in the calculation/,
+      )
+      await expect(legend.locator('.formula-example p')).not.toBeEmpty()
+      await expect(legend.locator('.formula-help-note')).not.toBeEmpty()
+      await expect(legend.locator('.formula-help-limits dd')).toHaveCount(2)
+      await page.keyboard.press('Escape')
+      await expect(legend).toHaveCount(0)
+      await expect(button).toBeFocused()
+      await expect(input).toHaveValue(value)
+    }
+  }
+  await checkEveryField()
+  const halfLife = page.getByRole('button', {
+    name: 'About History: Recency half-life (days)',
+    exact: true,
+  })
+  await halfLife.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog')).toContainText(
+    'half strength after 30 days and quarter strength after 60 days',
+  )
+  await screenshot(page, '18-formula-legend.png', false)
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click()
+  await expect(halfLife).toBeFocused()
+  for (const name of ['Saved presets', 'Preset name']) {
+    await page.getByRole('button', { name: `About ${name}`, exact: true }).click()
+    await expect(page.getByRole('dialog', { name, exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog').locator('.formula-example p')).not.toBeEmpty()
+    await page.keyboard.press('Escape')
+  }
+  expect((await state(page)).settings.configs).toEqual(before)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'About History: Similarity penalty', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('0.80 − (0.15 × 0.60) = 0.71')
+  expect(
+    await page.getByRole('dialog').evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth),
+  ).toBeTruthy()
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  await screenshot(page, '19-mobile-formula-legend.png', false)
+  await page.keyboard.press('Escape')
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.locator('#engine-version').selectOption('v1-popularity')
+  await expect(page.locator('.formula-panel')).toHaveAttribute('open', '')
+  await expect(page.locator('.formula-fields .formula-info-button')).toHaveCount(5)
+  await checkEveryField()
+  await page.getByRole('button', { name: 'About Baseline: Top boost', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'both Featured and Top gets both separate boosts',
+  )
+  await page.keyboard.press('Escape')
+  await screenshot(page, '20-baseline-formula-legends.png')
+  expect((await state(page)).settings.configs).toEqual(before)
+})
+
 test('formula validation, presets and immutable run configuration', async ({ page }) => {
   await demo(page)
   await newSimulation(page)
@@ -434,8 +510,8 @@ test('formula validation, presets and immutable run configuration', async ({ pag
     page.getByRole('button', { name: 'Run recommendation', exact: false }),
   ).toBeDisabled()
   await page.getByRole('button', { name: 'Restore defaults' }).click()
-  await page.getByLabel('Recency half-life (days)').fill('45')
-  await page.getByLabel('Preset name').fill('Longer memory')
+  await page.getByLabel('Recency half-life (days)', { exact: true }).fill('45')
+  await page.getByLabel('Preset name', { exact: true }).fill('Longer memory')
   await page.getByRole('button', { name: 'Save preset' }).click()
   await run(page)
   const data = await state(page)
@@ -445,11 +521,11 @@ test('formula validation, presets and immutable run configuration', async ({ pag
   await page.locator('.formula-panel summary').click()
   await page.getByRole('button', { name: 'Restore defaults' }).click()
   expect((await state(page)).settings.configs['v2-hybrid-2-6-2'].halfLife).toBe(30)
-  await page.getByLabel('Saved presets').selectOption(data.presets[0].id)
-  await expect(page.getByLabel('Recency half-life (days)')).toHaveValue('45')
+  await page.getByLabel('Saved presets', { exact: true }).selectOption(data.presets[0].id)
+  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
   await page.reload()
   await page.locator('.formula-panel summary').click()
-  await expect(page.getByLabel('Recency half-life (days)')).toHaveValue('45')
+  await expect(page.getByLabel('Recency half-life (days)', { exact: true })).toHaveValue('45')
 })
 
 test('export, reset, import and invalid import preserve players and run tabs', async ({ page }) => {
