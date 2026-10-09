@@ -2,9 +2,17 @@
   <section class="results-section" aria-label="Recommendation results">
     <div class="results-heading">
       <div class="section-title-inline">
-        <div>
-          <h2>Recommendation results</h2>
-        </div>
+        <h2>Recommendation results</h2>
+        <button
+          v-if="run"
+          type="button"
+          class="info-button"
+          aria-label="Simulation run details"
+          aria-haspopup="dialog"
+          @click="showRunInfo = true"
+        >
+          <span aria-hidden="true">i</span>
+        </button>
       </div>
       <span v-if="run" class="pill neutral">{{ run.recommendations.length }} recommendations</span>
     </div>
@@ -17,42 +25,6 @@
       </p>
     </div>
     <template v-else>
-      <div class="panel result-overview">
-        <div class="result-run-title">
-          <div>
-            <span class="eyebrow">{{ run.playerName }}</span>
-            <h3>
-              {{ getEngine(run.engineId)?.name }}
-              <span class="version-inline">v{{ run.engineVersion }}</span>
-            </h3>
-          </div>
-          <span class="pill" :class="stale ? 'amber-pill' : 'green-pill'">{{
-            stale ? 'Based on an older player state' : 'Current player state'
-          }}</span>
-        </div>
-        <p class="result-explanation">{{ run.summary }}</p>
-        <div class="run-meta">
-          <span>◷ {{ formatDate(run.asOf) }} UTC</span><span>{{ run.platform }}</span
-          ><span>Seed: {{ run.seed }}</span
-          ><span
-            >{{ run.dailyStats.reduce((n, s) => n + s.paidRounds + s.bonusRounds, 0) }} valid
-            rounds</span
-          ><span class="fingerprint">Snapshot {{ run.inputFingerprint.slice(0, 8) }}</span>
-        </div>
-        <details class="technical-note">
-          <summary>Saved run configuration</summary>
-          <dl class="metadata-list">
-            <dt>Engine</dt>
-            <dd>{{ run.engineId }} / {{ run.engineVersion }}</dd>
-            <dt>Input fingerprint</dt>
-            <dd>{{ run.inputFingerprint }}</dd>
-            <dt>Configuration</dt>
-            <dd>
-              <pre>{{ JSON.stringify(run.engineConfig, null, 2) }}</pre>
-            </dd>
-          </dl>
-        </details>
-      </div>
       <div v-if="hasProfile" class="panel taste-panel">
         <div class="section-toolbar">
           <div>
@@ -305,6 +277,50 @@
         </p>
       </section>
     </template>
+    <ModalDialog
+      v-if="showRunInfo && run"
+      title="Simulation run details"
+      class="run-info-dialog"
+      @close="showRunInfo = false"
+    >
+      <div class="result-overview">
+        <div class="result-run-title">
+          <div>
+            <span class="eyebrow">{{ run.playerName }}</span>
+            <h3>
+              {{ getEngine(run.engineId)?.name }}
+              <span class="version-inline">v{{ run.engineVersion }}</span>
+            </h3>
+          </div>
+          <span class="pill" :class="stale ? 'amber-pill' : 'green-pill'">{{
+            stale ? 'Based on an older player state' : 'Current player state'
+          }}</span>
+        </div>
+        <p class="result-explanation">{{ run.summary }}</p>
+        <div class="run-meta">
+          <span>◷ {{ formatDate(run.asOf) }} UTC</span><span>{{ run.platform }}</span>
+          <span>Seed: {{ run.seed }}</span>
+          <span
+            >{{ run.dailyStats.reduce((n, s) => n + s.paidRounds + s.bonusRounds, 0) }} valid
+            rounds</span
+          >
+          <span class="fingerprint">Snapshot {{ run.inputFingerprint.slice(0, 8) }}</span>
+        </div>
+        <details class="technical-note">
+          <summary>Saved run configuration</summary>
+          <dl class="metadata-list">
+            <dt>Engine</dt>
+            <dd>{{ run.engineId }} / {{ run.engineVersion }}</dd>
+            <dt>Input fingerprint</dt>
+            <dd>{{ run.inputFingerprint }}</dd>
+            <dt>Configuration</dt>
+            <dd>
+              <pre>{{ JSON.stringify(run.engineConfig, null, 2) }}</pre>
+            </dd>
+          </dl>
+        </details>
+      </div>
+    </ModalDialog>
     <SideDrawer v-if="why" :title="`Why ${gameById(why.item.gameId).name}?`" @close="why = null"
       ><GameCover :game="gameById(why.item.gameId)" />
       <div class="drawer-game-meta">
@@ -380,15 +396,23 @@
 </template>
 <script setup>
 /* eslint-env vue/setup-compiler-macros */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import GameCover from './GameCover.vue'
 import SideDrawer from './SideDrawer.vue'
+import ModalDialog from './ModalDialog.vue'
 import { games, gameById } from '../domain/games/mockGames.js'
 import { getEngine, compareResults } from '../domain/engines/registry.js'
 import { componentLabels } from '../domain/engines/shared/explainability.js'
 const props = defineProps({ run: Object, compareRun: Object, stale: Boolean })
 const why = ref(null),
-  showProfile = ref(false)
+  showProfile = ref(false),
+  showRunInfo = ref(false)
+watch(
+  () => props.run?.id,
+  () => {
+    showRunInfo.value = false
+  },
+)
 const pct = (n) => Math.round(n * 100),
   formatDate = (d) => d.slice(0, 16).replace('T', ' ')
 const poolNames = {

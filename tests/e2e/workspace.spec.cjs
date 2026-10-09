@@ -48,6 +48,12 @@ async function run(page, compare = false) {
     .click()
   await expect(page.locator('.recommendation-card')).toHaveCount(10)
 }
+async function openRunInfo(page) {
+  await page.getByRole('button', { name: 'Simulation run details', exact: true }).click()
+  await expect(
+    page.getByRole('dialog', { name: 'Simulation run details', exact: true }),
+  ).toBeVisible()
+}
 async function screenshot(page, name, fullPage = true) {
   await page.evaluate(() => window.scrollTo(0, 0))
   await page
@@ -188,7 +194,9 @@ test('Bets and Wins generates activity, corrects a round, rolls back and deletes
   await expect(dialog).not.toBeVisible()
   await expect(page.locator('.rounds-table tbody tr').first()).toContainText('Rolled back')
   await tab(page, 'Simulation')
+  await openRunInfo(page)
   await expect(page.getByText('Based on an older player state', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
   await newSimulation(page)
   await run(page)
   document = await state(page)
@@ -272,19 +280,88 @@ test('each simulation is a saved subtab, including cold start and old-state mark
     'aria-selected',
     'true',
   )
-  await expect(page.locator('.result-run-title')).toContainText('Personalized Hybrid')
+  await openRunInfo(page)
+  await expect(page.getByRole('dialog').locator('.result-run-title')).toContainText(
+    'Personalized Hybrid',
+  )
+  await page.keyboard.press('Escape')
   await tab(page, 'General info')
   await page.getByRole('button', { name: 'Rename', exact: true }).click()
   await page.getByLabel('New player name').fill('Updated slots')
   await page.getByRole('button', { name: 'Save name' }).click()
   await tab(page, 'Simulation')
+  await openRunInfo(page)
   await expect(page.getByText('Based on an older player state', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
   expect((await state(page)).players[0].recommendationRuns[0]).toEqual(first)
   await demo(page, 'cold')
   await page.locator('#engine-version').selectOption('v2-hybrid-2-6-2')
   await newSimulation(page)
   await run(page)
+  await openRunInfo(page)
   await expect(page.getByText('Not enough player history yet', { exact: false })).toBeVisible()
+  await page.keyboard.press('Escape')
+})
+
+test('run overview is hidden behind the results info icon and follows the selected run', async ({
+  page,
+}) => {
+  await demo(page)
+  await newSimulation(page)
+  await page.getByLabel('Run seed', { exact: true }).fill('original-run')
+  await run(page)
+  const first = (await state(page)).players[0].recommendationRuns[0]
+  const info = page.getByRole('button', { name: 'Simulation run details', exact: true })
+  await expect(page.locator('.results-heading').getByRole('button')).toHaveAttribute(
+    'aria-haspopup',
+    'dialog',
+  )
+  await expect(page.locator('.result-overview')).toHaveCount(0)
+  await expect(page.getByText(first.summary, { exact: true })).toHaveCount(0)
+  await expect(page.locator('.recommendation-card')).toHaveCount(10)
+  await info.focus()
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog', { name: 'Simulation run details', exact: true })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText(first.playerName)
+  await expect(dialog).toContainText('Personalized Hybrid 2+6+2')
+  await expect(dialog).toContainText(`v${first.engineVersion}`)
+  await expect(dialog).toContainText(first.summary)
+  await expect(dialog).toContainText('Seed: original-run')
+  await expect(dialog).toContainText(first.asOf.slice(0, 16).replace('T', ' '))
+  await expect(dialog).toContainText(`Snapshot ${first.inputFingerprint.slice(0, 8)}`)
+  await expect(dialog.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused()
+  await screenshot(page, '21-simulation-run-info.png', false)
+  await page.keyboard.press('Tab')
+  await expect(dialog.locator('summary')).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(dialog.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused()
+  await dialog.locator('summary').click()
+  await expect(dialog.locator('pre')).toHaveText(JSON.stringify(first.engineConfig, null, 2))
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(info).toBeFocused()
+  await newSimulation(page)
+  await page.getByLabel('Run seed', { exact: true }).fill('second-run')
+  await run(page)
+  await openRunInfo(page)
+  await expect(dialog).toContainText('Seed: second-run')
+  await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click()
+  await page.getByRole('tab', { name: 'Run 1 · V2', exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openRunInfo(page)
+  await expect(dialog).toContainText('Seed: original-run')
+  await expect(dialog.locator('details')).not.toHaveAttribute('open', '')
+  await screenshot(page, '22-mobile-simulation-run-info.png', false)
+  await dialog.locator('summary').click()
+  expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBeTruthy()
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
+  await page.mouse.click(2, 2)
+  await expect(dialog).toHaveCount(0)
+  await expect(info).toBeFocused()
+  expect((await state(page)).players[0].recommendationRuns[0]).toEqual(first)
 })
 
 test('comparison creates two run subtabs and uses identical snapshots', async ({ page }) => {
@@ -309,7 +386,11 @@ test('comparison creates two run subtabs and uses identical snapshots', async ({
   await expect(page.getByRole('dialog')).toContainText('V1 · Popularity Baseline')
   await page.keyboard.press('Escape')
   await page.getByRole('tab', { name: 'Run 2 · V1', exact: true }).click()
-  await expect(page.locator('.result-run-title')).toContainText('Popularity Baseline')
+  await openRunInfo(page)
+  await expect(page.getByRole('dialog').locator('.result-run-title')).toContainText(
+    'Popularity Baseline',
+  )
+  await page.keyboard.press('Escape')
   await page.getByLabel('Compare with', { exact: true }).selectOption(runs[0].id)
   await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
   await page.reload()

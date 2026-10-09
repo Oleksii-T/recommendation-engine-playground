@@ -787,7 +787,8 @@ nav a.router-link-active {
 .formula-label label {
   display: block;
 }
-.formula-info-button {
+.formula-info-button,
+.info-button {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -800,7 +801,8 @@ nav a.router-link-active {
   color: var(--muted);
   background: transparent;
 }
-.formula-info-button span {
+.formula-info-button span,
+.info-button span {
   width: 15px;
   height: 15px;
   border: 1px solid currentColor;
@@ -809,7 +811,8 @@ nav a.router-link-active {
   line-height: 14px;
   font-weight: 650;
 }
-.formula-info-button:hover {
+.formula-info-button:hover,
+.info-button:hover {
   color: var(--accent);
   background: var(--accent-light);
 }
@@ -1041,9 +1044,8 @@ nav a.router-link-active {
 .pool-dot.exploration {
   background: #bd9657;
 }
-.result-overview {
-  padding: 23px;
-  margin-bottom: 18px;
+.modal-dialog.run-info-dialog {
+  width: 660px;
 }
 .result-run-title {
   display: flex;
@@ -2132,7 +2134,6 @@ table tr:hover td {
   .result-run-title h3 {
     font-size: 15px;
   }
-  .result-overview,
   .taste-panel {
     padding: 19px 16px;
   }
