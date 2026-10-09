@@ -2,11 +2,8 @@
   <div class="page">
     <div class="page-heading">
       <div>
-        <div class="eyebrow">THE INPUT LAYER</div>
         <h1>Game catalogue<span class="heading-dot">.</span></h1>
-        <p>A diverse, synthetic catalogue. Every recommendation starts here.</p>
       </div>
-      <span class="pill">{{ games.length }} mocked games</span>
     </div>
     <div class="catalogue-stats">
       <div>
@@ -21,7 +18,6 @@
         <strong>{{ categories.length }}</strong
         ><span>Categories</span>
       </div>
-      <div><strong>100%</strong><span>Local artwork & data</span></div>
     </div>
     <section class="panel catalogue-panel">
       <div class="catalogue-toolbar">
@@ -112,10 +108,6 @@
         </div>
       </div>
     </section>
-    <p class="footnote">
-      Fictional catalogue shaped around the PlayLive game model. Disabled or platform-incompatible
-      games are excluded from recommendations.
-    </p>
     <SideDrawer v-if="selected" :title="selected.name" @close="selected = null"
       ><GameCover :game="selected" />
       <p class="muted">{{ selected.product }} · {{ selected.category }}</p>

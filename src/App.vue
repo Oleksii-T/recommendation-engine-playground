@@ -29,10 +29,7 @@
         >
           <option v-for="e in engines" :key="e.id" :value="e.id">{{ e.label }}</option>
         </select>
-        <p>{{ store.engine.shortDescription }}</p>
-        <span class="engine-status"><i></i> {{ store.engine.version }} · Ready to run</span>
       </div>
-      <div class="nav-caption">WORKSPACE</div>
       <nav aria-label="Main navigation">
         <RouterLink to="/simulations" @click="menu = false"
           ><span class="nav-icon">▥</span> Simulations <span class="nav-arrow">↗</span></RouterLink
@@ -41,20 +38,15 @@
           <span class="nav-count">{{ games.length }}</span></RouterLink
         >
       </nav>
-      <div class="sidebar-note">
-        <span class="note-icon">⌘</span><strong>A space to experiment.</strong>
-        <p>Simulate player behaviour.<br />Understand every recommendation.</p>
-      </div>
       <div class="local-status">
         <span class="status-dot" :class="{ warning: store.warning }"></span>
         <div>
           <strong>{{
             store.warning ? 'Local storage needs attention' : 'Saved on this device'
           }}</strong
-          ><span>Synthetic data only · No backend</span>
+          ><span>Synthetic data only</span>
         </div>
       </div>
-      <span class="sidebar-footer">PLAYGROUND <span>v1.0</span></span>
     </aside>
     <main class="main-content" :inert="compact && menu ? '' : null">
       <header class="topbar">
@@ -66,12 +58,10 @@
             @click="menu = !menu"
           >
             ☰</button
-          ><span>Workspace</span><span class="crumb-slash">/</span
           ><strong>{{ route.path === '/games' ? 'Game catalogue' : 'Simulations' }}</strong>
         </div>
         <div class="topbar-actions">
-          <span class="local-tag">LOCAL WORKSPACE</span
-          ><button class="text-button" @click="importInput.click()">↥ <span>Import</span></button
+          <button class="text-button" @click="importInput.click()">↥ <span>Import</span></button
           ><button class="button small" @click="exportState">↧ <span>Export JSON</span></button
           ><button class="text-button" @click="confirmReset">Reset</button
           ><input

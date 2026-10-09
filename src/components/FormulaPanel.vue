@@ -1,22 +1,15 @@
 <template>
   <details class="formula-panel">
-    <summary>
-      <span>⚙</span> Advanced formula <span class="muted">Weights, recency & local presets</span>
-    </summary>
+    <summary><span>⚙</span> Advanced formula</summary>
     <div class="formula-body">
       <div class="section-toolbar">
-        <p class="muted">
-          Parameters belong to {{ store.engine.name }}. Scoring groups must total 1.
-        </p>
+        <p class="muted">Scoring groups must total 1.</p>
         <button class="text-button" @click="restore">Restore defaults</button>
       </div>
       <div v-for="group in groups" :key="group" class="formula-group">
         <h4>{{ group }}</h4>
         <div class="formula-fields">
-          <label
-            v-for="f in store.engine.parameters.filter((f) => f.group === group)"
-            :key="f.key"
-            :title="f.description"
+          <label v-for="f in store.engine.parameters.filter((f) => f.group === group)" :key="f.key"
             >{{ f.label
             }}<input
               :value="config[f.key]"

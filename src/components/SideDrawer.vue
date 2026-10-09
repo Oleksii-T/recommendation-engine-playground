@@ -11,7 +11,6 @@
       >
         <header class="drawer-header">
           <div>
-            <span class="eyebrow">DETAILS</span>
             <h2>{{ title }}</h2>
           </div>
           <button class="icon-button" aria-label="Close details" @click="$emit('close')">✕</button>

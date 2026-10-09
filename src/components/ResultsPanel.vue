@@ -5,29 +5,17 @@
         <span class="section-number">04</span>
         <div>
           <h2>Recommendation results</h2>
-          <p>
-            {{
-              run
-                ? 'A clear view of what the engine selected, and why.'
-                : 'Your next recommendation starts with a simulation.'
-            }}
-          </p>
         </div>
       </div>
       <span v-if="run" class="pill neutral">{{ run.recommendations.length }} recommendations</span>
     </div>
     <div v-if="!run" class="panel result-empty">
       <div class="empty-symbol">✦</div>
-      <h3>See the reasoning behind the ranking.</h3>
+      <h3>No recommendation results</h3>
       <p>
         Choose a player and run a recommendation.<br />A player without history works too — try a
         cold start.
       </p>
-      <div class="empty-composition">
-        <span><i class="pool-dot familiar"></i> 2 Familiar</span
-        ><span><i class="pool-dot discovery"></i> 6 Discovery</span
-        ><span><i class="pool-dot exploration"></i> 2 Exploration</span>
-      </div>
     </div>
     <template v-else>
       <div class="panel result-overview">
@@ -69,7 +57,6 @@
       <div v-if="hasProfile" class="panel taste-panel">
         <div class="section-toolbar">
           <div>
-            <span class="eyebrow">ENGAGEMENT, NOT FINANCIAL OUTCOMES</span>
             <h3>Player taste profile</h3>
           </div>
           <button class="text-button" @click="showProfile = true">View all preferences ↗</button>
@@ -114,7 +101,6 @@
           <h3>
             {{ group.label }} <span>· {{ group.items.length }}</span>
           </h3>
-          <p>{{ group.description }}</p>
         </div>
         <div class="recommendation-grid">
           <article v-for="r in group.items" :key="r.gameId" class="recommendation-card">
@@ -184,7 +170,6 @@
       <section v-if="comparison" class="panel comparison-panel" aria-label="Version comparison">
         <div class="section-toolbar">
           <div>
-            <span class="eyebrow">SAME PLAYER. SAME SNAPSHOT.</span>
             <h3>Engine comparison</h3>
           </div>
           <span class="pill" :class="comparison.sameSnapshot ? 'green-pill' : 'amber-pill'">{{
@@ -350,9 +335,8 @@
         <h4>How this group is ranked</h4>
         <p>{{ why.item.calculationTrace.formulaText }}</p>
         <p class="muted small-text">
-          A similarity adjustment of
-          {{ (why.item.components.diversityPenalty * 100).toFixed(1) }} points helped diversify the
-          final selection.
+          Similarity penalty:
+          {{ (why.item.components.diversityPenalty * 100).toFixed(1) }} points.
         </p>
       </div>
       <h3>Eligibility check</h3>
@@ -362,7 +346,6 @@
           {{ why.item.calculationTrace.eligibility.enabled ? 'enabled' : 'disabled' }}
         </li>
         <li>✓ Compatible with {{ why.run.platform }}</li>
-        <li>✓ Local synthetic catalogue game</li>
       </ul>
       <details class="technical-note">
         <summary>Technical calculation</summary>
@@ -428,26 +411,21 @@ const hasProfile = computed(
 )
 const resultGroups = computed(() =>
   [
-    { pool: 'familiar', label: 'Familiar', description: 'A little of what they already love.' },
+    { pool: 'familiar', label: 'Familiar' },
     {
       pool: 'discovery',
       label: 'Discovery',
-      description: 'New choices, connected to their taste.',
     },
-    { pool: 'exploration', label: 'Explore', description: 'Room for something different.' },
+    { pool: 'exploration', label: 'Explore' },
     {
       pool: 'fallback',
       label: props.run?.playerProfile.coldStart
         ? 'Popular starting points'
         : 'Eligible alternatives',
-      description: props.run?.playerProfile.coldStart
-        ? 'A varied selection while preferences develop.'
-        : 'Next-best choices when a pool is short.',
     },
     {
       pool: 'baseline',
       label: 'Popular selection',
-      description: 'Global appeal, independent of player history.',
     },
   ]
     .map((g) => ({

@@ -4,14 +4,9 @@
       <span class="section-number">02</span>
       <div>
         <h2>Activity history</h2>
-        <p>
-          {{
-            player.generationBatches.length
-              ? `${
-                  player.generationBatches.length
-                } batches · ${player.bets.length.toLocaleString()} synthetic rounds`
-              : 'Generate the engagement signals your engine will learn from.'
-          }}
+        <p v-if="player.generationBatches.length">
+          {{ player.generationBatches.length }} batches ·
+          {{ player.bets.length.toLocaleString() }} synthetic rounds
         </p>
       </div>
       <span class="disclosure-arrow">⌄</span>
@@ -19,7 +14,6 @@
     <div class="section-body">
       <div class="section-toolbar">
         <h3>Generate a batch</h3>
-        <span class="pill neutral">Deterministic · UTC</span>
       </div>
       <form @submit.prevent="previewBatch">
         <div class="form-grid activity-form">
@@ -85,7 +79,6 @@
       <div v-if="preview" class="batch-preview">
         <div class="section-toolbar">
           <h3>Batch preview</h3>
-          <span class="pill">Ready to review</span>
         </div>
         <div class="preview-stats">
           <div>

@@ -2,9 +2,7 @@
   <div class="page">
     <div class="page-heading">
       <div>
-        <div class="eyebrow">THE EXPERIMENT WORKSPACE</div>
         <h1>Simulations<span class="heading-dot">.</span></h1>
-        <p>Build a player. Shape their history. Understand their recommendations.</p>
       </div>
       <div class="demo-control">
         <label class="sr-only" for="demo-scenario">Demo scenario</label
@@ -13,29 +11,11 @@
         ><button class="button" @click="loadDemo">Load demo <span>↗</span></button>
       </div>
     </div>
-    <div class="workspace-intro">
-      <span class="intro-icon">⌁</span>
-      <div>
-        <strong>A controlled experiment, every time.</strong
-        ><span>
-          Identical inputs produce identical results. All activity is synthetic and stays on this
-          device.</span
-        >
-      </div>
-      <span class="intro-badge">SANDBOX</span>
-    </div>
     <section class="panel player-panel">
       <div class="section-heading">
         <span class="section-number">01</span>
         <div>
           <h2>Player</h2>
-          <p>
-            {{
-              store.player
-                ? 'The simulation is built around this player.'
-                : 'Start with a blank player or load a ready-made demo.'
-            }}
-          </p>
         </div>
         <button class="button small" @click="creating = !creating">＋ Create player</button>
       </div>
@@ -147,7 +127,6 @@
           <h2>Activity history</h2>
           <p>Select a player to generate and inspect activity.</p>
         </div>
-        <span class="muted">Awaiting player</span>
       </div>
     </section>
     <section class="panel run-panel">
@@ -206,8 +185,7 @@
           <div class="run-engine-label">
             <span class="status-dot"></span
             ><span
-              ><strong>{{ store.engine.label }}</strong
-              ><small>Engagement-based · Reproducible by seed</small></span
+              ><strong>{{ store.engine.label }}</strong></span
             >
           </div>
           <div class="button-group">
@@ -241,13 +219,9 @@
             · {{ r.createdAt.slice(11, 19) }}
           </option>
         </select></label
-      ><span>{{ store.player.recommendationRuns.length }} immutable runs saved</span>
+      ><span>{{ store.player.recommendationRuns.length }} runs saved</span>
     </div>
     <ResultsPanel :run="selectedRun" :compare-run="compareRun" :stale="stale" />
-    <footer class="page-footer">
-      <span>Built for understanding, not production predictions.</span
-      ><span>LOCAL DATA <span class="footer-separator">/</span> UTC TIMEZONE</span>
-    </footer>
   </div>
 </template>
 <script setup>
