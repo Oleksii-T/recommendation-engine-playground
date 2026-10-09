@@ -2564,19 +2564,6 @@ table tr:hover td {
   color: var(--red);
   background: var(--accent-light);
 }
-.run-selection {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-.run-selection label {
-  width: 230px;
-}
-.run-selection select {
-  font-size: 11px;
-}
 .run-tab-panel .results-heading {
   margin-top: 0;
 }
@@ -2638,14 +2625,6 @@ table tr:hover td {
     gap: 8px;
   }
   .simulation-navigation > .button {
-    padding: 10px;
-    font-size: 11px;
-  }
-  .run-selection label {
-    width: 170px;
-    min-width: 0;
-  }
-  .run-selection > .button {
     padding: 10px;
     font-size: 11px;
   }

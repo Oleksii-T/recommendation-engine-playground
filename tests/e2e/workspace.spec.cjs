@@ -47,6 +47,8 @@ async function run(page, compare = false) {
     .getByRole('button', { name: compare ? 'Run and compare' : 'Run recommendation', exact: false })
     .click()
   await expect(page.locator('.recommendation-card')).toHaveCount(10)
+  await expect(page.getByRole('button', { name: 'Delete simulation', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Compare with', exact: true })).toHaveCount(0)
 }
 async function openRunInfo(page) {
   await page.getByRole('button', { name: 'Simulation run details', exact: true }).click()
@@ -391,7 +393,7 @@ test('comparison creates two run subtabs and uses identical snapshots', async ({
     'Popularity Baseline',
   )
   await page.keyboard.press('Escape')
-  await page.getByLabel('Compare with', { exact: true }).selectOption(runs[0].id)
+  await page.getByRole('tab', { name: 'Run 1 · V2', exact: true }).click()
   await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByText('Identical inputs verified', { exact: true })).toBeVisible()
@@ -409,7 +411,7 @@ test('simulation deletion cancels, removes comparisons and selects the next run 
   await expect(tabs.getByRole('tab')).toHaveText(['Run 2 · V1', 'Run 1 · V2'])
   await expect(page.getByRole('heading', { name: 'Simulation', exact: true })).toHaveCount(0)
   page.once('dialog', (dialog) => dialog.dismiss())
-  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await tabs.getByRole('button', { name: 'Delete simulation Run 1 · V2', exact: true }).click()
   await expect(tabs.getByRole('tab')).toHaveCount(2)
   expect((await state(page)).players[0].recommendationRuns).toEqual(before.recommendationRuns)
   page.once('dialog', (dialog) => dialog.accept())
@@ -421,14 +423,14 @@ test('simulation deletion cancels, removes comparisons and selects the next run 
   await run(page)
   await expect(tabs.getByRole('tab')).toHaveText(['Run 2 · V2', 'Run 1 · V2'])
   page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await tabs.getByRole('button', { name: 'Delete simulation Run 2 · V2', exact: true }).click()
   await expect(tabs.getByRole('tab', { name: 'Run 1 · V2', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )
   await expect(tabs.getByRole('tab')).toBeFocused()
   page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Delete simulation', exact: true }).click()
+  await tabs.getByRole('button', { name: 'Delete simulation Run 1 · V2', exact: true }).click()
   await expect(tabs).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Run configuration', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'New simulation', exact: false })).toBeFocused()

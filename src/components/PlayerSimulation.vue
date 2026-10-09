@@ -28,24 +28,7 @@
     class="run-tab-panel"
   >
     <RunConfiguration v-if="active === 'new'" @run="created" />
-    <template v-else-if="run"
-      ><div class="run-selection">
-        <button class="button danger" @click="deleteSimulation(run.id)">Delete simulation</button>
-        <label
-          >Compare with<select
-            aria-label="Compare with"
-            :value="comparison?.id || ''"
-            @change="selectComparison($event.target.value)"
-          >
-            <option value="">No comparison</option>
-            <option v-for="candidate in comparisons" :key="candidate.id" :value="candidate.id">
-              {{ runLabel(candidate) }}
-            </option>
-          </select></label
-        >
-      </div>
-      <ResultsPanel :run="run" :compare-run="comparison" :stale="stale"
-    /></template>
+    <ResultsPanel v-else-if="run" :run="run" :compare-run="comparison" :stale="stale" />
   </div>
 </template>
 <script setup>
@@ -102,9 +85,6 @@ const stale = computed(() =>
 )
 function selectRun(id) {
   router.push({ query: { run: id } })
-}
-function selectComparison(id) {
-  router.replace({ query: { run: active.value, compare: id || 'none' } })
 }
 function created(results) {
   router.push({ query: { run: results[0].id, ...(results[1] ? { compare: results[1].id } : {}) } })
