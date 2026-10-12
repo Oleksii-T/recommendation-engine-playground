@@ -3,6 +3,7 @@
 Select recorded play within the **History** window, and the player’s Favourite Games.
 - Include games that are disabled, inactive or unsupported on the selected platform.
 - Include favourites even if the player has never played them.
+- **History** window is a configurable amount of days to be processed, e.g. previous 30 days.
 
 
 #### Step #2
